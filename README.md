@@ -66,10 +66,12 @@ If commands are visible, your setup is complete and PropelIQ-Copilot is ready to
 | `build-prototype` | Transforms business hypotheses into working validation prototypes within 80 hours with priority-based scoping | Business hypothesis, feature idea, problem statement | Working prototype code | `/build-prototype "E-commerce checkout flow"` |
 | `create-automation-test` | Decomposes functional requirements into feature-level and E2E test workflow specifications for Playwright automation | spec.md, feature name, or UC-XXX (optional), --type flag | `.propel/context/test/tw_<feature>.md`, `.propel/context/test/e2e_<journey>.md` | `/create-automation-test --type feature` |
 | `create-epics` | Generates EP-XXX epics with requirement mappings, priorities, business value. | File path to requirements document, free text epic scope (optional) | `.propel/context/docs/epics.md` | `/create-epics spec.md` |
+| `create-project-plan` | Generates project plan with scope, milestones, AI-adjusted cost baseline, auto-derived team composition, and risk register from discovery phase outputs | spec.md (required), design.md (required), `--start-date`, `--buffer` flags (optional) | `.propel/context/docs/project_plan.md` | `/create-project-plan` |
 | `create-figma-spec` | Derives screens from requirements, creates screen specifications with state requirements, flows, and design tokens | Path to spec.md file (optional) | `.propel/context/docs/figma_spec.md`, `.propel/context/docs/designsystem.md` | `/create-figma-spec` |
 | `create-iac` | Generates Terraform modules for multi-cloud providers from infrastructure specification | infra-spec.md, --provider flag | `.propel/context/iac/<provider>/terraform/` | `/create-iac --provider <cloud>` |
 | `create-pipeline-scripts` | Generates GitHub Actions workflow files from CI/CD specification | cicd-spec.md, --platform flag | `.propel/context/pipelines/github-actions/` | `/create-pipeline-scripts` |
 | `create-spec` | Generates functional requirements (FR-XXX) and Use Case specifications with PlantUML diagrams | Feature specifications, business requirements, project scope documents (.pdf, .txt, .md, .docx) | `.propel/context/docs/spec.md` | `/create-spec project-scope.md` |
+| `create-sprint-plan` | Generates sprint plans with dependency-ordered story allocation, sprint goals, capacity planning, and critical path analysis | epics.md (required), us_*.md (required), project_plan.md (recommended), EP-XXX filter, `--sprint-duration`, `--velocity`, `--buffer` flags (optional) | `.propel/context/docs/sprint_plan.md` | `/create-sprint-plan` |
 | `create-test-plan` | Generates comprehensive E2E test plans from spec.md and design.md with full requirement traceability | spec.md, design.md, feature name (optional), --scope flag | `.propel/context/docs/test_plan_[feature].md` | `/create-test-plan --scope full` |
 | `create-user-stories` | Generates INVEST-compliant user stories with acceptance criteria, effort estimation, and Visual Design Context section | Scope file path, Epic ID, feature text, or epic URL | `.propel/context/tasks/us_XXX/us_XXX.md` | `/create-user-stories scope.md EP-001` |
 | `design-architecture` | Generates comprehensive design documents including NFR, TR, DR requirements and architecture patterns | Feature file path (optional) | `.propel/context/docs/design.md` | `/design-architecture .propel/context/docs/spec.md` |
@@ -162,7 +164,9 @@ Agentic orchestrators automate multi-step workflows by sequentially invoking ind
 | `iac-module-template` | Terraform module documentation with inputs, outputs, resources, dependencies, and usage examples. |
 | `infra-specification-template` | Infrastructure specification with INFRA-XXX, SEC-XXX, OPS-XXX, ENV-XXX requirements for cloud deployments. |
 | `issue-triage-template` | Bug triage results with root cause analysis, fix implementation tasks, and systematic validation. |
+| `project-plan-template` | Project plan with executive summary, scope definition, AI-adjusted effort estimation, team composition, milestones, cost baseline, risk register, and sprint planning bridge. |
 | `requirements-template` | Standardized feature requirements with ID formats, use cases, user stories, and acceptance criteria. |
+| `sprint-plan-template` | Sprint plan with configuration, epic dependency map, dependency-ordered sprint backlog, sprint goals, critical path analysis, load balance assessment, and coverage report. |
 | `task-analysis-template` | Implementation analysis report with traceability matrix, logical findings, and pass/fail verdict. |
 | `task-template` | AI-optimized task structure with context-rich details, validation loops, and iterative refinement approach. |
 | `test-plan-template` | E2E test plan with test cases for FR, UC, NFR, TR, DR requirements, risk assessment, traceability matrix, and entry/exit criteria. |
@@ -215,6 +219,12 @@ Agentic orchestrators automate multi-step workflows by sequentially invoking ind
 │   │               │
 │   │               └── /implement-tasks <test_plan_XXX.md>
 │   │                       Output: Source code (added/updated files)
+│   │
+│   ├── /create-project-plan
+│   │   │   Output: project_plan.md (scope, milestones, cost baseline, risk register, team composition)
+│   │   │
+│   │   └── /create-sprint-plan [requires epics.md, us_*.md]
+│   │           Output: sprint_plan.md (dependency-ordered sprints, sprint goals, critical path)
 │   │
 │   ├── /plan-cloud-infrastructure
 │   │   │   Output: .propel/context/devops/infra-spec.md
@@ -343,6 +353,9 @@ For larger enhancements requiring epic breakdown but not full requirements speci
 │   │           └── /implement-tasks <test_plan_XXX.md>
 │   │                   Output: Source code (added/updated files)
 │   │
+│   ├── /create-sprint-plan [requires epics.md, us_*.md]
+│   │       Output: sprint_plan.md (dependency-ordered sprints, sprint goals, critical path)
+│   │
 │   ├── /plan-cloud-infrastructure
 │   │   │   Output: .propel/context/devops/infra-spec.md
 │   │   │
@@ -415,6 +428,12 @@ For major enhancements requiring complete requirements specification and archite
     │   │               │
     │   │               └── /implement-tasks <test_plan_XXX.md>
     │   │                       Output: Source code (added/updated files)
+    │   │
+    │   ├── /create-project-plan
+    │   │   │   Output: project_plan.md (scope, milestones, cost baseline, risk register, team composition)
+    │   │   │
+    │   │   └── /create-sprint-plan [requires epics.md, us_*.md]
+    │   │           Output: sprint_plan.md (dependency-ordered sprints, sprint goals, critical path)
     │   │
     │   ├── /plan-cloud-infrastructure
     │   │   │   Output: .propel/context/devops/infra-spec.md
