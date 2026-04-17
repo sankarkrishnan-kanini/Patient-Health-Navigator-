@@ -8,4 +8,4 @@ consult `.propel/prompts/assess-codebase-maturity.md` for the workflow steps.
 
 ---
 
-*This analyzer provides comprehensive codebase assessment covering architecture, security, performance, data model, and integration topology with actionable insights.*
+*This assessor produces a quantified maturity scorecard across 11 quality criteria with evidence-based scoring and remediation guidance.*

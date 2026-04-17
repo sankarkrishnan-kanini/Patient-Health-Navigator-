@@ -1,6 +1,6 @@
 ---
 agent: agent
-description: 'For Architects. Orchestrates technical discovery sequentially—requirements → architecture → modeling → UX spec (if UI) → test strategy.'
+description: For Architects. Orchestrates technical discovery sequentially—requirements → architecture → modeling → UX spec (if UI) → test strategy.
 tools: ['execute/createAndRunTask', 'read/readFile', 'azure-mcp/search', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'todo', 'propel-iq/*']
 ---
 
