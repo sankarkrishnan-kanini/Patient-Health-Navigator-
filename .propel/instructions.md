@@ -1,27 +1,57 @@
-# PropelIQ — Agent Instructions
+## Workflow Orchestration
 
-This project uses Decision Loop Engineering. Read and follow this file before starting any work.
+### 1. Plan Mode Default
 
-## Rules
+- Enter plan mode for ANY non-trivial task (3+ steps or architectural decisions)
+- If something goes sideways, STOP and re-plan immediately - don't keep pushing
+- Use plan mode for verification steps, not just building
+- Write detailed specs upfront to reduce ambiguity
 
-Rules in `.propel/rules/` are standards. During a workflow, the prompt's Guardrails section declares which rules apply. For ad-hoc work, `.propel/rules/decision-loop-principles.md` applies universally — all other rules apply when their domain or file type is touched.
+### 2. Subagent Strategy to keep main context window clean
 
-## Workflows
+- Offload research, exploration, and parallel analysis to subagents
+- For complex problems, throw more compute at it via subagents
+- One task per subagent for focused execution
 
-Structured workflows live in `.propel/prompts/`. They are execution specifications — follow their steps exactly. Do not skip steps, reorder them, or add steps not defined in the workflow.
+### 3. Self-Improvement Loop
 
-## Templates
+- After ANY correction from the user: update '.propel/learnings/findings-regsitry.md' with the pattern
+- Write rules for yourself that prevent the same mistake
+- Ruthlessly iterate on these learnings until mistake rate drops
+- Review learnings at session start for relevant project
 
-Templates live in `.propel/templates/`. Templates are the sole authority on output structure. Do not add, reorder, or omit sections.
+### 4. Verification Before Done
 
-## Artifact Resolution
+- Never mark a task complete without proving it works
+- Diff behavior between main and your changes when relevant
+- Ask yourself: "Would a staff engineer approve this?"
+- Run tests, check logs, demonstrate correctness
 
-`.propel/project-config.json` is the artifact registry. It maps logical artifact names to file paths, templates, and inter-artifact dependencies. Use the artifact-resolver skill to resolve paths. Do not hardcode paths.
+### 5. Demand Elegance (Balanced)
 
-## Context Loading
+- For non-trivial changes: pause and ask "is there a more elegant way?"
+- If a fix feels hacky: "Knowing everything I know now, implement the elegant solution"
+- Skip this for simple, obvious fixes - don't over-engineer
+- Challenge your own work before presenting it
 
-Only load documents that the current task explicitly references. Lazy load — do not preload all available context. When a reference document cannot be found, log and continue. Do not stop the workflow unless the missing document is critical.
+### 6. Autonomous Bug Fixing
 
-## Quality Gates
+- When given a bug report: just fix it. Don't ask for hand-holding
+- Point at logs, errors, failing tests -> then resolve them
+- Zero context switching required from the user
+- Go fix failing CI tests without being told how
 
-Every workflow has a quality gate. Gates are blocking — if a check fails, the workflow stops. Every gate produces auditable output to console. A workflow is incomplete until its evaluation output is printed.
+## Task Management
+
+1. **Plan First**: Write plan with checkable items
+2. **Verify Plan**: Check in before starting implementation
+3. **Track Progress**: Mark items complete as you go
+4. **Explain Changes**: High-level summary at each step
+5. **Document Results**: Add review after implementation
+6. **Capture Lessons**: Update '.propel/learnings/findings-regsitry.md' after corrections
+
+## Core Principles
+
+- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
+- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
+- **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
