@@ -34,7 +34,43 @@ try:
 except ImportError:
     _TIKTOKEN_AVAILABLE = False
 
-CONTEXT_LIMIT = int(os.environ.get("CONTEXT_TRACKER_LIMIT", "128000"))
+_DEFAULT_CONTEXT_LIMIT = 128_000
+_CONTEXT_LIMIT_OVERRIDE = os.environ.get("CONTEXT_TRACKER_LIMIT")
+
+
+def _resolve_context_limit(model: Optional[str]) -> int:
+    """Resolve the context-window size for a given model.
+
+    Precedence:
+      1. CONTEXT_TRACKER_LIMIT env var (explicit override).
+      2. Model-name pattern match (1M, 200k, 128k tiers).
+      3. _DEFAULT_CONTEXT_LIMIT (128k).
+    """
+    if _CONTEXT_LIMIT_OVERRIDE:
+        try:
+            return int(_CONTEXT_LIMIT_OVERRIDE)
+        except ValueError:
+            pass
+    if not model:
+        return _DEFAULT_CONTEXT_LIMIT
+
+    m = model.lower()
+
+    if "[1m]" in m or re.search(r"\b1m\b", m) or m.endswith("-1m"):
+        return 1_000_000
+
+    if "claude" in m:
+        return 200_000
+
+    if any(tag in m for tag in ("gpt-4o", "gpt-4.1", "o1", "o3", "o4")):
+        return 128_000
+
+    if "gemini" in m:
+        return 2_000_000 if "-2m" in m else 1_000_000
+
+    return _DEFAULT_CONTEXT_LIMIT
+
+
 MAX_MESSAGE_CHARS = int(os.environ.get("CTX_TRACKER_MAX_MESSAGE_CHARS", "8000"))
 REDACT_ENABLED = os.environ.get("CTX_TRACKER_REDACT") == "1"
 
@@ -153,8 +189,65 @@ def _git_config(key: str) -> Optional[str]:
         return None
 
 
+# Prices in USD per 1M tokens. Update when Anthropic/OpenAI pricing changes.
+_MODEL_PRICING: dict = {
+    "claude-opus-4-7":   {"in": 15.00, "out": 75.00, "cache_read": 1.50, "cache_write": 18.75},
+    "claude-opus-4-6":   {"in": 15.00, "out": 75.00, "cache_read": 1.50, "cache_write": 18.75},
+    "claude-sonnet-4-6": {"in":  3.00, "out": 15.00, "cache_read": 0.30, "cache_write":  3.75},
+    "claude-sonnet-4-5": {"in":  3.00, "out": 15.00, "cache_read": 0.30, "cache_write":  3.75},
+    "claude-haiku-4-5":  {"in":  1.00, "out":  5.00, "cache_read": 0.10, "cache_write":  1.25},
+}
+
+
+def _price_for(model: Optional[str]) -> Optional[dict]:
+    if not model:
+        return None
+    m = model.lower()
+    for key, rates in _MODEL_PRICING.items():
+        if key in m:
+            return rates
+    return None
+
+
+def _compute_cost_usd(model: Optional[str], usage: Optional[dict]) -> Optional[float]:
+    rates = _price_for(model)
+    if not rates or not usage:
+        return None
+    inp    = usage.get("input_tokens", 0) or 0
+    outp   = usage.get("output_tokens", 0) or 0
+    c_read = usage.get("cache_read_input_tokens", 0) or 0
+    c_new  = usage.get("cache_creation_input_tokens", 0) or 0
+    total = (
+        inp    * rates["in"] +
+        outp   * rates["out"] +
+        c_read * rates["cache_read"] +
+        c_new  * rates["cache_write"]
+    ) / 1_000_000
+    return round(total, 6)
+
+
+def _collect_otel_resource_attrs() -> dict:
+    """Parse OTEL_RESOURCE_ATTRIBUTES (comma-separated key=value pairs).
+
+    Standard Claude Code / OTel convention for team and cost-center tagging,
+    e.g. OTEL_RESOURCE_ATTRIBUTES=department=engineering,team.id=platform,cost_center=eng-123
+    """
+    raw = os.environ.get("OTEL_RESOURCE_ATTRIBUTES", "")
+    out: dict = {}
+    if not raw:
+        return out
+    for pair in raw.split(","):
+        if "=" not in pair:
+            continue
+        k, v = pair.split("=", 1)
+        k, v = k.strip(), v.strip()
+        if k:
+            out[k] = v
+    return out
+
+
 def _collect_user_info() -> dict:
-    """Collect OTel-style identity/host attributes. Email is intentionally omitted."""
+    """Collect OTel-style identity/host attributes, plus optional team/org tags."""
     info: dict = {}
     try:
         info["user.name"] = os.environ.get("USERNAME") or getpass.getuser()
@@ -165,12 +258,24 @@ def _collect_user_info() -> dict:
         info["user.full_name"] = git_name
     if info.get("user.name"):
         info["user.id"] = info["user.name"]
+    git_email = _git_config("user.email")
+    user_email = os.environ.get("CLAUDE_USER_EMAIL") or git_email
+    if user_email:
+        info["user.email"] = user_email
     try:
         info["host.name"] = socket.gethostname()
     except OSError:
         pass
     info["os.type"] = platform.system().lower()
     info["os.version"] = platform.release()
+    info["host.arch"] = platform.machine()
+    term = os.environ.get("TERM_PROGRAM") or os.environ.get("TERM")
+    if term:
+        info["terminal.type"] = term
+    app_version = os.environ.get("CLAUDE_CODE_VERSION")
+    if app_version:
+        info["app.version"] = app_version
+    info.update(_collect_otel_resource_attrs())
     return info
 
 
@@ -187,18 +292,23 @@ def _load_system_instructions() -> list[dict]:
     return out
 
 
-def _parse_transcript(path: str) -> tuple[str, Optional[str], Optional[dict], Optional[str]]:
+def _parse_transcript(
+    path: str,
+) -> tuple[str, Optional[str], Optional[dict], Optional[str], Optional[dict], Optional[str]]:
     """
     Walk a JSONL transcript.
 
-    Returns: (full_text, latest_model, latest_assistant_message, latest_response_id)
+    Returns: (full_text, latest_model, latest_assistant_message,
+              latest_response_id, latest_usage, latest_request_id)
     """
     if not path or not os.path.exists(path):
-        return "", None, None, None
+        return "", None, None, None, None, None
     parts: list[str] = []
     latest_model: Optional[str] = None
     latest_assistant: Optional[dict] = None
     latest_response_id: Optional[str] = None
+    latest_usage: Optional[dict] = None
+    latest_request_id: Optional[str] = None
 
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
@@ -206,6 +316,8 @@ def _parse_transcript(path: str) -> tuple[str, Optional[str], Optional[dict], Op
                 entry = json.loads(line.strip())
             except json.JSONDecodeError:
                 continue
+            if isinstance(entry, dict) and entry.get("requestId"):
+                latest_request_id = entry["requestId"]
             msg = entry.get("message", entry) if isinstance(entry, dict) else None
             if not isinstance(msg, dict):
                 continue
@@ -213,6 +325,8 @@ def _parse_transcript(path: str) -> tuple[str, Optional[str], Optional[dict], Op
                 latest_model = msg["model"]
             if msg.get("id"):
                 latest_response_id = msg["id"]
+            if isinstance(msg.get("usage"), dict):
+                latest_usage = msg["usage"]
 
             role = msg.get("role")
             content = msg.get("content")
@@ -230,7 +344,14 @@ def _parse_transcript(path: str) -> tuple[str, Optional[str], Optional[dict], Op
                 latest_assistant = _message(
                     "assistant", joined, msg.get("stop_reason") or msg.get("finish_reason")
                 )
-    return "\n".join(parts), latest_model, latest_assistant, latest_response_id
+    return (
+        "\n".join(parts),
+        latest_model,
+        latest_assistant,
+        latest_response_id,
+        latest_usage,
+        latest_request_id,
+    )
 
 
 def _provider_name(ide: str) -> str:
@@ -256,7 +377,7 @@ def _new_trace(event: HookEvent, model: Optional[str]) -> dict:
         "gen_ai.request.model": model,
         "gen_ai.system_instructions": _load_system_instructions(),
         "context_window": {
-            "limit_tokens": CONTEXT_LIMIT,
+            "limit_tokens": _resolve_context_limit(model),
             "counting_method": "tiktoken" if _TIKTOKEN_AVAILABLE else "estimated",
         },
         "created_at": datetime.now().isoformat(timespec="seconds"),
@@ -279,15 +400,22 @@ def dispatch(event: HookEvent) -> None:
     path = _trace_path(event.session_id)
     trace = _load_trace(path)
 
-    full_text, scanned_model, latest_assistant, response_id = _parse_transcript(
-        event.transcript_path or ""
-    )
+    (
+        full_text,
+        scanned_model,
+        latest_assistant,
+        response_id,
+        usage,
+        request_id,
+    ) = _parse_transcript(event.transcript_path or "")
     model = event.model or scanned_model or trace.get("gen_ai.request.model")
 
     if not trace:
         trace = _new_trace(event, model)
     if model and not trace.get("gen_ai.request.model"):
         trace["gen_ai.request.model"] = model
+    cw = trace.setdefault("context_window", {})
+    cw["limit_tokens"] = _resolve_context_limit(model)
     trace["updated_at"] = now
 
     if event.phase == PHASE_PRE:
@@ -346,6 +474,7 @@ def dispatch(event: HookEvent) -> None:
         start = datetime.fromisoformat(turn["start_time"])
         elapsed = (datetime.fromisoformat(now) - start).total_seconds()
         turn["duration_seconds"] = round(elapsed, 3)
+        turn["duration_ms"] = int(round(elapsed * 1000))
         turn["gen_ai.server.time_to_complete"] = round(elapsed, 3)
     except ValueError:
         pass
@@ -353,12 +482,32 @@ def dispatch(event: HookEvent) -> None:
         turn["gen_ai.response.model"] = model
     if response_id:
         turn["gen_ai.response.id"] = response_id
+    if request_id:
+        turn["gen_ai.request.id"] = request_id
     turn["gen_ai.output.messages"] = [latest_assistant] if latest_assistant else []
     turn["gen_ai.usage.output_tokens"] = output_tokens
+
+    if usage:
+        turn["gen_ai.usage.cache_read_tokens"] = usage.get("cache_read_input_tokens", 0) or 0
+        turn["gen_ai.usage.cache_creation_tokens"] = usage.get("cache_creation_input_tokens", 0) or 0
+        # Prefer the API's authoritative input_tokens (includes system prompt, tools, MCP context)
+        # over the tiktoken-estimated user-message-only count from PRE phase.
+        if isinstance(usage.get("input_tokens"), int):
+            turn["gen_ai.usage.input_tokens"] = usage["input_tokens"]
+        if isinstance(usage.get("output_tokens"), int):
+            turn["gen_ai.usage.output_tokens"] = usage["output_tokens"]
+    cost = _compute_cost_usd(model, usage)
+    if cost is not None:
+        turn["gen_ai.usage.cost_usd"] = cost
+        trace["gen_ai.usage.cost_usd_total"] = round(
+            trace.get("gen_ai.usage.cost_usd_total", 0.0) + cost, 6
+        )
+
+    context_limit = _resolve_context_limit(model)
     turn["context_window.percentage_used"] = (
-        round(post_total / CONTEXT_LIMIT * 100, 2) if CONTEXT_LIMIT else 0.0
+        round(post_total / context_limit * 100, 2) if context_limit else 0.0
     )
-    turn["context_window.remaining_tokens"] = max(CONTEXT_LIMIT - post_total, 0)
+    turn["context_window.remaining_tokens"] = max(context_limit - post_total, 0)
 
     # Roll cumulative forward so the next turn's input tokens start from here.
     trace["_cumulative_input_tokens"] = post_total

@@ -56,6 +56,17 @@ This ensures API keys and framework-specific files remain local to your developm
 
 If commands are visible, your setup is complete and PropelIQ-Copilot is ready to use.
 
+### Copilot Chat Equivalent for usepromptsubmitprompt
+
+GitHub Copilot Chat in VS Code does not currently expose hook events equivalent to `UserPromptSubmit`/`Stop`.
+
+Use the provided workaround:
+- Run VS Code task `PropelIQ: Copilot pre-prompt submit` before your main chat request.
+- Use prompt `/usepromptsubmitprompt` from `.github/prompts/usepromptsubmitprompt.prompt.md`.
+- Run VS Code task `PropelIQ: Copilot session end` when ending your session.
+
+These tasks call `.propel/hooks/context_tracker_tiktoken/copilot.py` with `userPromptSubmitted` and `sessionEnd` to emulate the same tracking flow.
+
 ## Prompts
 
 | Prompt | Description | Input | Output | Usage Example |
