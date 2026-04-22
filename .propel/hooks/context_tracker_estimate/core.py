@@ -195,7 +195,8 @@ _MODEL_PRICING: dict = {
 def _price_for(model: Optional[str]) -> Optional[dict]:
     if not model:
         return None
-    m = model.lower()
+    # Normalize: convert to lowercase and replace spaces/dots with hyphens
+    m = model.lower().replace(" ", "-").replace(".", "-")
     for key, rates in _MODEL_PRICING.items():
         if key in m:
             return rates
@@ -289,7 +290,7 @@ def _parse_transcript(
     path: str,
 ) -> tuple[str, Optional[str], Optional[dict], Optional[str], Optional[dict], Optional[str]]:
     """
-    Walk a JSONL transcript.
+    Walk a JSONL transcript. Supports both Claude API format and Windsurf format.
 
     Returns: (full_text, latest_model, latest_assistant_message,
               latest_response_id, latest_usage, latest_request_id)
@@ -302,6 +303,7 @@ def _parse_transcript(
     latest_response_id: Optional[str] = None
     latest_usage: Optional[dict] = None
     latest_request_id: Optional[str] = None
+    is_windsurf_format = False
 
     with open(path, "r", encoding="utf-8", errors="replace") as f:
         for line in f:
@@ -309,9 +311,34 @@ def _parse_transcript(
                 entry = json.loads(line.strip())
             except json.JSONDecodeError:
                 continue
-            if isinstance(entry, dict) and entry.get("requestId"):
+            
+            if not isinstance(entry, dict):
+                continue
+            
+            # Detect Windsurf format by checking for 'type' field
+            entry_type = entry.get("type")
+            if entry_type in ("user_input", "planner_response", "view_file", "run_command", "grep_search", "find", "code_action", "todo_list"):
+                is_windsurf_format = True
+                
+                # Extract user input
+                if entry_type == "user_input":
+                    user_response = entry.get("user_input", {}).get("user_response", "")
+                    if user_response:
+                        parts.append(user_response)
+                
+                # Extract planner response (assistant message)
+                elif entry_type == "planner_response":
+                    response = entry.get("planner_response", {}).get("response", "")
+                    if response:
+                        parts.append(response)
+                        latest_assistant = _message("assistant", response)
+                
+                continue
+            
+            # Claude API format parsing (original logic)
+            if entry.get("requestId"):
                 latest_request_id = entry["requestId"]
-            msg = entry.get("message", entry) if isinstance(entry, dict) else None
+            msg = entry.get("message", entry)
             if not isinstance(msg, dict):
                 continue
             if msg.get("model"):
@@ -337,8 +364,28 @@ def _parse_transcript(
                 latest_assistant = _message(
                     "assistant", joined, msg.get("stop_reason") or msg.get("finish_reason")
                 )
+    
+    # For Windsurf format, create synthetic usage data from token counts
+    full_text = "\n".join(parts)
+    if is_windsurf_format and full_text and not latest_usage:
+        # Estimate tokens from the full conversation text
+        total_tokens = count_tokens(full_text)
+        # Rough split: assume last message is output, rest is input
+        if latest_assistant:
+            assistant_text = latest_assistant.get("parts", [{}])[0].get("content", "")
+            output_tokens = count_tokens(assistant_text)
+            input_tokens = max(total_tokens - output_tokens, 0)
+        else:
+            input_tokens = total_tokens
+            output_tokens = 0
+        
+        latest_usage = {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+        }
+    
     return (
-        "\n".join(parts),
+        full_text,
         latest_model,
         latest_assistant,
         latest_response_id,
@@ -415,6 +462,12 @@ def dispatch(event: HookEvent) -> None:
         # Input tokens for this turn. Claude/Windsurf transcripts at PRE time
         # hold everything up to and including the new user message; Copilot
         # has no transcript so we count the prompt text and accumulate.
+        
+        # Diagnostic: warn if prompt is empty
+        if not (event.prompt or event.inline_text) and event.ide != "copilot":
+            print(f"[ctx-tracker] WARNING: Empty prompt in PRE phase for {event.ide}", file=sys.stderr)
+            print(f"[ctx-tracker] session_id={event.session_id}, model={event.model}", file=sys.stderr)
+        
         if event.ide == "copilot":
             prompt_tokens = count_tokens(event.prompt or event.inline_text or "")
             input_tokens = trace.get("_cumulative_input_tokens", 0) + prompt_tokens
