@@ -1,5 +1,5 @@
 ---
-description: Generates comprehensive E2E / feature specific test plan requirements covering functional, NFR, technical, and data validations
+description: Generates comprehensive E2E / feature specific test plan requirements covering functional, NFR, technical, and data validations.
 tools: ['execute/getTerminalOutput', 'execute/createAndRunTask', 'execute/runInTerminal', 'read/problems', 'read/readFile', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'azure-mcp/search', 'sequential-thinking/*', 'todo', 'propel-iq/*']
 ---
 

@@ -1,6 +1,6 @@
 ---
 agent: agent
-description: 'For QA Engineers. Orchestrates test automation sequentially—automation test specs → Playwright scripts → test execution → validation report.'
+description: For QA Engineers. Orchestrates test automation sequentially—automation test specs → Playwright scripts → test execution → validation report.
 tools: ['read/readFile', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'context7/*', 'sequential-thinking/*', 'todo', 'propel-iq/*']
 ---
 
