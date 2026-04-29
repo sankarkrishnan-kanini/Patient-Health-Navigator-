@@ -1,13 +1,13 @@
 ---
 name: probe-user
-description: Interview the user about a plan or design until shared understanding, and provide a gap-elicitation protocol for workflows with missing info. WHEN: "probe me", "probe user", "stress-test my plan", "let's brainstorm", or workflow detects input gaps and calls the elicitation protocol.
+description: Interview the user about a plan or design, run a gap-elicitation protocol, OR confirm a structured decision (coverage validation, inferred-item review) — all via AskUserQuestion. WHEN: "probe me", "probe user", "stress-test my plan", "let's brainstorm", workflow detects input gaps, OR a workflow needs structured Confirm/Adjust/Reject/Skip decisions on a generated artifact.
 license: MIT
 metadata:
   author: KANINI
   version: 1.0.0
 ---
 
-## Rendering Contract (applies to both modes)
+## Rendering Contract (applies to all three modes)
 
 Prefer the host's `AskUserQuestion` tool for rendering every question. The tool enforces one-question-at-a-time structure at the schema level — the model cannot batch. Markdown fallback is used only when `AskUserQuestion` is unavailable.
 
@@ -103,6 +103,73 @@ Present gaps one at a time using the radio-selection format below, regardless of
 ### Output
 
 Store resolved answers as `$ELICITATION_ADDENDUM`. Append to the workflow's resolved input before the next analysis step. Addendum fills gaps — does not override explicit input statements.
+
+---
+
+## Mode 3 — Decision Confirmation
+
+Structured decisions on generated artifacts. Replaces ad-hoc `Confirm / Flag issues?` and `Accept / Adjust / Reject / Skip?` prompts.
+
+### Shapes
+
+| Shape | Use for | Caller-supplied fields |
+|---|---|---|
+| `coverage_validation` | Confirm planning inventory before generation | `inventory_table`, `artifact_kind` |
+| `inferred_batch_intake` | One-shot tiered triage opening the inferred-review loop | `total_count`, `low_count`, `medium_count`, `high_count` |
+| `inferred_review` | Review one `[SOURCE:INFERRED]` item | `item_id`, `item_text`, `basis`, `current_index`, `total_count`, `confidence` (HIGH\|MEDIUM\|LOW) |
+
+Confidence (caller-derived from `Basis:`): explicit rule/external evidence → HIGH; domain-standard inference → MEDIUM; speculative/thin → LOW.
+
+### `coverage_validation` (opt-in — skip when self-checks pass)
+
+Skip entirely when the inventory has: zero orphan FR↔UC links, every Step 3 module represented, no `[UNCLEAR]` rows, item count in template's expected band. Emit a non-blocking console notice and proceed. Invoke only when the agent flags low confidence.
+
+```text
+Planned [artifact_kind] coverage shown above. Any issues?
+
+  (a) Confirm — proceed to generation *recommended*
+  (b) Flag misscoped items (too broad, too narrow, wrong module/category)
+  (c) Flag missing modules or functional areas
+  (d) Custom: _enter your own answer_
+```
+
+- (a) → proceed. (b)/(c) → caller asks one follow-up for specifics, adjusts inventory, loops back to the affected analysis phase only. (d) → caller interprets.
+
+### `inferred_batch_intake` (one upfront pause; collapses N into 1)
+
+```text
+[total_count] inferred items detected ([low_count] LOW, [medium_count] MEDIUM, [high_count] HIGH confidence). Review depth?
+
+  (a) Review only LOW-confidence items ([low_count]) *recommended*
+  (b) Review all [total_count] one-by-one
+  (c) Accept all as [SOURCE:INFERRED] — skip review, downstream sees them as unconfirmed
+  (d) Custom: _enter your own answer_
+```
+
+- (a) → loop over LOW only; HIGH/MEDIUM auto-flipped to `[SOURCE:INPUT]`, no ledger write.
+- (b) → loop over all.
+- (c) → exit; all stay `[SOURCE:INFERRED]`.
+- (d) → caller parses free text (e.g., "review MEDIUM and LOW", specific IDs).
+
+### `inferred_review` (per-item)
+
+```text
+Inferred [artifact_kind] Review ([current_index]/[total_count], [confidence] confidence):
+
+[item_id]: [SOURCE:INFERRED] [item_text]
+Basis: [basis]
+
+  (a) Accept — confirm as [SOURCE:INPUT] *recommended*
+  (b) Adjust — provide replacement text in next turn
+  (c) Reject — remove from artifact, log to signal ledger
+  (d) Custom: _enter your own answer_
+```
+
+- (a) → flip tag to `[SOURCE:INPUT]`.
+- (b) → caller asks "What should it be?" next turn; updates text, flips tag, logs CORRECTED.
+- (c) → remove item, log REJECTED with reason (or "Not in scope").
+- (d) → free text; clarify in one follow-up if ambiguous.
+- Commands: `skip` = leave as `[SOURCE:INFERRED]`, advance. `skip all` = exit loop; remaining stay `[SOURCE:INFERRED]`.
 
 ---
 
