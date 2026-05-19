@@ -14,7 +14,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": []
+            "references": [],
+            "workflow": "/brainstorm-idea"
         },
         "spec": {
             "propelFileName": "spec.md",
@@ -26,7 +27,8 @@
             "projectDirPath": "${baseProjectPath}/docs/",
             "contentType": "pdf",
             "mcpType": "local",
-            "references": ["codeanalysis", "prototype", "brainstorm"]
+            "references": ["codeanalysis", "prototype", "brainstorm"],
+            "workflow": "/create-spec"
         },
         "design": {
             "propelFileName": "design.md",
@@ -38,7 +40,8 @@
             "projectDirPath": "${baseProjectPath}/docs/",
             "contentType": "docx",
             "mcpType": "local",
-            "references": ["spec", "codeanalysis"]
+            "references": ["spec", "codeanalysis"],
+            "workflow": "/design-architecture"
         },
         "model": {
             "propelFileName": "model.md",
@@ -50,10 +53,11 @@
             "projectDirPath": "${baseProjectPath}/docs/",
             "contentType": "pdf",
             "mcpType": "local",
-            "references": ["spec", "design", "codeanalysis"]
+            "references": ["spec", "design", "codeanalysis"],
+            "workflow": "/design-model"
         },
         "task": {
-            "propelFileName": "",
+            "propelFileName": "task_<seq>_<name>.md",
             "propelDirPath": "${basePropelPath}/tasks",
             "templates": {
                 "default": ".propel/templates/task-template.md"
@@ -62,7 +66,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design", "model", "figma_spec", "designsystem", "findings_registry"]
+            "references": ["spec", "design", "model", "figma_spec", "designsystem", "findings_registry"],
+            "workflow": "/plan-development-task"
         },
         "figma_spec": {
             "propelFileName": "figma_spec.md",
@@ -75,7 +80,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design"]
+            "references": ["spec", "design"],
+            "workflow": "/create-figma-spec"
         },
         "designsystem": {
             "propelFileName": "designsystem.md",
@@ -87,7 +93,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": []
+            "references": [],
+            "workflow": ""
         },
         "codeanalysis": {
             "propelFileName": "codeanalysis.md",
@@ -99,7 +106,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": []
+            "references": [],
+            "workflow": "/analyze-codebase"
         },
         "codebase_maturity": {
             "propelFileName": "codebase-maturity.md",
@@ -111,7 +119,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["codeanalysis"]
+            "references": ["codeanalysis"],
+            "workflow": "/assess-codebase-maturity"
         },
         "findings_registry": {
             "propelFileName": "findings-registry.md",
@@ -122,7 +131,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": []
+            "references": [],
+            "workflow": ""
         },
         "signal_ledger": {
             "propelFileName": "signal-ledger.md",
@@ -134,6 +144,7 @@
             "contentType": "md",
             "mcpType": "local",
             "references": [],
+            "workflow": "",
             "_note": "Write-only during workflows. Read only by signal-health reports. Do not add to workflow references arrays."
         },
         "epics": {
@@ -146,10 +157,12 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design", "model", "codeanalysis", "figma_spec"]
+            "references": ["spec", "design", "model", "codeanalysis", "figma_spec"],
+            "workflow": "/create-epics",
+            "_note": "Epic IDs are EP-<seqnum> (e.g., EP-001), with reserved foundational tokens EP-TECH (technical bootstrap) and EP-DATA (data foundation)."
         },
         "user_story": {
-            "propelFileName": "",
+            "propelFileName": "us_<id>.md",
             "propelDirPath": "${basePropelPath}/tasks",
             "templates": {
                 "default": ".propel/templates/user-story-template.md"
@@ -158,10 +171,18 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["epics", "spec", "design", "model", "figma_spec"]
+            "references": ["epics", "spec", "design", "model", "figma_spec"],
+            "workflow": "/create-user-stories",
+            "_note": "Written to nested path <epic_id>/us_<id>/us_<id>.md — composed by the prompt from propelDirPath + EPIC_ID + US_ID. <id> is zero-padded 3-digit."
         },
         "wireframe": {
             "propelFileName": "",
+            "propelFileNames": {
+                "information_architecture": "information-architecture.md",
+                "component_inventory": "component-inventory.md",
+                "navigation_map": "navigation-map.md",
+                "design_tokens_applied": "design-tokens-applied.md"
+            },
             "propelDirPath": "./.propel/context/wireframes",
             "templates": {
                 "information_architecture": ".propel/templates/wireframe-reference-template.md",
@@ -171,10 +192,12 @@
             "projectDirPath": "",
             "contentType": "html",
             "mcpType": "local",
-            "references": ["figma_spec", "designsystem", "spec"]
+            "references": ["figma_spec", "designsystem", "spec"],
+            "workflow": "/generate-wireframe",
+            "_note": "Multi-file artifact. propelFileNames documents the markdown outputs (one per template key). Per-screen HTML wireframes also written as wireframe-SCR-XXX-<name>.html (composed by prompt). design_tokens_applied is conditional on --fidelity=high. propelFileNames is documentation today; resolver does not yet read this field."
         },
         "bug_resolution": {
-            "propelFileName": "",
+            "propelFileName": "task_<seq>_fix_<name>.md",
             "propelDirPath": "${basePropelPath}/tasks",
             "templates": {
                 "default": ".propel/templates/issue-triage-template.md"
@@ -183,10 +206,11 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/plan-bug-resolution"
         },
         "unit_test": {
-            "propelFileName": "",
+            "propelFileName": "test_plan_<layer>_<name>.md",
             "propelDirPath": "${basePropelPath}/tasks",
             "templates": {
                 "default": ".propel/templates/unit-test-template.md"
@@ -195,10 +219,15 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["design"]
+            "references": ["design"],
+            "workflow": "/plan-unit-test"
         },
         "automation_test": {
             "propelFileName": "",
+            "propelFileNames": {
+                "feature": "tw_<feature>.md",
+                "e2e": "e2e_<journey>.md"
+            },
             "propelDirPath": "${basePropelPath}/test",
             "templates": {
                 "feature": ".propel/templates/automated-testing-template.md",
@@ -208,20 +237,28 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design", "test_plan", "figma_spec"]
+            "references": ["spec", "design", "test_plan", "figma_spec"],
+            "workflow": "/create-automation-test",
+            "_note": "Multi-template artifact. propelFileNames map keyed by template name documents the per-template output filename. Tokens <feature> and <journey> are slugified scope names. propelFileNames is documentation today; resolver does not yet read this field."
         },
         "playwright_scripts": {
             "propelFileName": "",
+            "propelFileNames": {
+                "feature": "tests/<feature>.spec.ts",
+                "e2e": "e2e/<journey>.spec.ts"
+            },
             "propelDirPath": "./test-automation",
             "templates": {},
             "projectFileName": "",
             "projectDirPath": "",
             "contentType": "code",
             "mcpType": "local",
-            "references": ["automation_test"]
+            "references": ["automation_test"],
+            "workflow": "/generate-playwright-scripts",
+            "_note": "Multi-template artifact. Generates Playwright .spec.ts files per workflow file. propelFileNames is documentation today; resolver does not yet read this field."
         },
         "test_plan": {
-            "propelFileName": "",
+            "propelFileName": "test_plan_<feature>.md",
             "propelDirPath": "${basePropelPath}/docs",
             "templates": {
                 "default": ".propel/templates/test-plan-template.md"
@@ -230,7 +267,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design", "findings_registry"]
+            "references": ["spec", "design", "findings_registry"],
+            "workflow": "/create-test-plan"
         },
         "implement_task": {
             "propelFileName": "",
@@ -240,10 +278,12 @@
             "projectDirPath": "",
             "contentType": "code",
             "mcpType": "local",
-            "references": ["spec", "design", "model", "epics", "codeanalysis", "figma_spec", "designsystem", "findings_registry"]
+            "references": ["spec", "design", "model", "epics", "codeanalysis", "figma_spec", "designsystem", "findings_registry"],
+            "workflow": "/implement-tasks",
+            "_note": "Code-action prompt; modifies source code, produces no markdown artifact. propelFileName/propelDirPath intentionally empty."
         },
         "code_review": {
-            "propelFileName": "",
+            "propelFileName": "review_<timestamp>.md",
             "propelDirPath": "./.propel/code-reviews",
             "templates": {
                 "default": ".propel/templates/code-review-template.md"
@@ -252,7 +292,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/review-code"
         },
         "execute_unittest": {
             "propelFileName": "",
@@ -262,10 +303,12 @@
             "projectDirPath": "",
             "contentType": "code",
             "mcpType": "local",
-            "references": []
+            "references": [],
+            "workflow": "/execute-unittest",
+            "_note": "Test-execution prompt; runs tests, produces no markdown artifact. propelFileName/propelDirPath intentionally empty."
         },
         "challenge_artifact": {
-            "propelFileName": "",
+            "propelFileName": "challenge_<timestamp>.md",
             "propelDirPath": "./.propel/challenge-reviews",
             "templates": {
                 "default": ".propel/templates/challenge-artifact-template.md"
@@ -274,10 +317,11 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/challenge-artifact"
         },
         "edge_case_review": {
-            "propelFileName": "",
+            "propelFileName": "edge-cases_<timestamp>.md",
             "propelDirPath": "./.propel/edge-case-reviews",
             "templates": {
                 "default": ".propel/templates/edge-case-review-template.md"
@@ -286,7 +330,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/review-edge-cases"
         },
         "project_plan": {
             "propelFileName": "project-plan.md",
@@ -298,7 +343,8 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["spec", "design", "model", "figma_spec", "test_plan", "codeanalysis"]
+            "references": ["spec", "design", "model", "figma_spec", "test_plan", "codeanalysis"],
+            "workflow": "/create-project-plan"
         },
         "sprint_plan": {
             "propelFileName": "sprint-plan.md",
@@ -310,10 +356,11 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["project_plan", "epics", "user_story", "spec"]
+            "references": ["project_plan", "epics", "user_story", "spec"],
+            "workflow": "/create-sprint-plan"
         },
         "review_devops_security": {
-            "propelFileName": "",
+            "propelFileName": "review_<timestamp>.md",
             "propelDirPath": "${basePropelPath}/devops/security-reviews",
             "templates": {
                 "default": ".propel/templates/devops-security-review-template.md"
@@ -322,10 +369,11 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/review-devops-security"
         },
         "review_ux": {
-            "propelFileName": "",
+            "propelFileName": "ux-review-<timestamp>.md",
             "propelDirPath": "./.propel/reviews",
             "templates": {
                 "default": ".propel/templates/review-ux-template.md"
@@ -334,7 +382,22 @@
             "projectDirPath": "",
             "contentType": "md",
             "mcpType": "local",
-            "references": ["findings_registry"]
+            "references": ["findings_registry"],
+            "workflow": "/review-ux"
+        },
+        "change_request": {
+            "propelFileName": "CR-<seqnum>.md",
+            "propelDirPath": "${basePropelPath}/change-requests",
+            "templates": {
+                "default": ".propel/templates/change-request-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["spec", "design", "model", "figma_spec", "epics", "user_story", "test_plan", "codeanalysis", "findings_registry"],
+            "workflow": "/request-change",
+            "_note": "<seqnum> = zero-padded 3-digit, auto-incremented by request-change Step 0.1. Flat layout: all CR files live directly under propelDirPath. The order of `references` is the execution sequence used by /apply-change. Each referenced artifact's `workflow` attribute is the slash command invoked when CR rows are tagged for that artifact. Artifacts with empty `workflow` (e.g., findings_registry) are context-only and never invoked."
         },
         "prototype": {
             "propelFileName": "mvp-scope-and-journeys.md",
@@ -346,7 +409,8 @@
             "projectDirPath": "",
             "contentType": "code",
             "mcpType": "local",
-            "references": ["codeanalysis", "spec", "design"]
+            "references": ["codeanalysis", "spec", "design"],
+            "workflow": "/build-prototype"
         }
     }
 }

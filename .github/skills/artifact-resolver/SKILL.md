@@ -81,7 +81,8 @@ Each artifact entry provides:
 - **projectDirPath** — directory path for the project deliverable (supports `${var}` interpolation)
 - **contentType** — format of the project deliverable (e.g. `pdf`, `docx`)
 - **mcpType** — how the artifact is accessed (`local` for files on disk, or other MCP transport types)
-- **references** — array of artifact keys this artifact may consult on demand as context (non-blocking — unavailable references are skipped)
+- **references** — array of artifact keys this artifact may consult on demand as context (non-blocking — unavailable references are skipped). For `change_request`, the array order also defines the execution sequence used by `/apply-change`.
+- **workflow** — *(optional)* slash command that creates or updates this artifact (e.g., `/create-spec`). Empty string `""` if the artifact has no creator workflow (e.g., `findings_registry`, `signal_ledger`). Used by `/request-change` and `/apply-change` to map CR rows to the workflow that processes them.
 
 ## Resolved output schema
 
@@ -90,6 +91,9 @@ When you call `/artifact-resolver <key>`, the resolver returns:
 ```json
 {
   "artifact": "spec",
+  "propelFileName": "spec.md",
+  "propelFileNames": {},
+  "propelDirPath": "./.propel/context/docs",
   "propelFilePath": "./.propel/context/docs/spec.md",
   "projectFilePath": "./docs/spec.pdf",
   "propelUmlPath": "./.propel/context/docs/uml-models",
@@ -100,17 +104,21 @@ When you call `/artifact-resolver <key>`, the resolver returns:
   "schema": "",
   "contentType": "pdf",
   "mcpType": "local",
-  "references": []
+  "references": [],
+  "workflow": "/create-spec"
 }
 ```
 
-- **propelFilePath** — fully resolved path to the propel markdown source
+- **propelFileName** — filename of the propel markdown source, passed through from config as-is. May contain documentation tokens like `<seq>`, `<name>`, `<timestamp>` which the consuming workflow substitutes at write time.
+- **propelFileNames** — map of named filenames (keyed by template name) for multi-file artifacts (e.g., `wireframe`, `automation_test`, `playwright_scripts`). Empty `{}` for single-file artifacts. Tokens substituted by the consuming workflow.
+- **propelDirPath** — fully resolved directory path for the propel output (interpolation applied)
+- **propelFilePath** — fully resolved path to the propel markdown source (= `propelDirPath` + `propelFileName`). For multi-file artifacts where `propelFileName` is empty, this path ends with `/` and callers should compose per-file paths from `propelDirPath` + entries in `propelFileNames`.
 - **projectFilePath** — fully resolved path to the project deliverable
 - **propelUmlPath** — fully resolved path for UML diagram files (`.puml`, `.mmd`, `.png`) co-located with the propel output. Derived by appending the fixed `uml-models` subdirectory to `propelDirPath`.
 - **projectUmlPath** — fully resolved path for UML diagram files co-located with the project deliverable. Derived by appending the fixed `uml-models` subdirectory to `projectDirPath`.
 - **templates** — object map of named template paths, passed through from config as-is
 - **schema** — path to the artifact's schema contract, passed through from config as-is (empty string if the artifact has no schema)
-- **contentType** / **mcpType** / **references** — passed through from config as-is
+- **contentType** / **mcpType** / **references** / **workflow** — passed through from config as-is
 
 ## Resolving artifacts
 
@@ -154,3 +162,5 @@ Once you have the artifact details, act on `mcpType` first, then interpret conte
 - If `assets/project-config.json` doesn't exist, inform the user that the project hasn't been configured yet
 - If the requested artifact key doesn't exist, list the available artifacts so the user can pick the right one
 - If a `${variable}` reference in the config cannot be resolved, the script exits with a JSON error identifying the unresolved variable
+- If the resolved `mcpType` is not supported by any available tool, report an error indicating the unsupported transport type
+- If the resolved `contentType` is not recognized, return the raw content with a warning about the unknown content type, so the caller can decide how to proceed

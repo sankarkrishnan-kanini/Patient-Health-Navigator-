@@ -95,6 +95,9 @@ def resolve_artifact(config: dict, artifact_key: str) -> None:
     propel_uml, project_uml = build_uml_paths(propel_dir, project_dir)
     result = {
         "artifact": artifact_key,
+        "propelFileName": entry.get("propelFileName", ""),
+        "propelFileNames": entry.get("propelFileNames", {}),
+        "propelDirPath": propel_dir,
         "propelFilePath": propel_file,
         "projectFilePath": project_file,
         "propelUmlPath": propel_uml,
@@ -104,6 +107,7 @@ def resolve_artifact(config: dict, artifact_key: str) -> None:
         "contentType": entry.get("contentType", ""),
         "mcpType": entry.get("mcpType", ""),
         "references": entry.get("references", []),
+        "workflow": entry.get("workflow", ""),
     }
     print(json.dumps(result, indent=2))
 
@@ -142,6 +146,9 @@ def resolve_all(config: dict) -> None:
         project_file = normalize_path(project_dir + "/" + entry.get("projectFileName", ""))
         propel_uml, project_uml = build_uml_paths(propel_dir, project_dir)
         resolved[key] = {
+            "propelFileName": entry.get("propelFileName", ""),
+            "propelFileNames": entry.get("propelFileNames", {}),
+            "propelDirPath": propel_dir,
             "propelFilePath": propel_file,
             "projectFilePath": project_file,
             "propelUmlPath": propel_uml,
@@ -151,6 +158,7 @@ def resolve_all(config: dict) -> None:
             "contentType": entry.get("contentType", ""),
             "mcpType": entry.get("mcpType", ""),
             "references": entry.get("references", []),
+            "workflow": entry.get("workflow", ""),
         }
     result = {
         "projectName": config.get("projectName", ""),
