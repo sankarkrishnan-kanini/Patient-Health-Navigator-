@@ -2,7 +2,7 @@
   "servers": {
     "propel-iq": {
       "type": "http",
-      "url": "https://propel-iq-mcp-ddajfrf9h2fya2gq.eastus-01.azurewebsites.net/mcp"
+      "url": "<propel-mcp-url>/mcp"
     },
     "sequential-thinking": {
       "command": "npx",

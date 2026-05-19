@@ -33,6 +33,14 @@ Copy the following directories and files to your project root:
 ```bash
 CONTEXT7_API_KEY=your-actual-api-key-here
 ```
+3. Open `.vscode/mcp.json` and update the PropelIQ MCP server URL path:
+
+```json
+"propel-iq": {
+  "type": "http",
+  "url": "<propel-mcp-url>/mcp"
+}
+```
 
 #### Step 3: Configure Source Control
 
