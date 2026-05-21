@@ -1,6 +1,6 @@
 ---
 description: 'Generates comprehensive specifications from feature specifs, or direct text input. Processes business requirements, project scope document, .txt, .md, .docx files or direct specifications to create business-aligned requirements with technical feasibility validation.'
-tools: ['edit/createFile', 'edit/createDirectory', 'edit/editFiles', 'search/fileSearch', 'search/readFile', 'sequential-thinking/*', 'context7/*', 'fetch']
+tools: ['edit/createFile', 'edit/createDirectory', 'edit/editFiles', 'search/fileSearch', 'sequential-thinking/*', 'context7/*', 'propel-sdlc/*']
 ---
 
 # Unified Spec Generator
