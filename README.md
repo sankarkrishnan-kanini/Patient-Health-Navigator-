@@ -23,11 +23,11 @@ Copy the following directories and files to your project root:
 - `.github/` - Contains prompt definitions and development instructions
 - `.propel/` - Contains templates and project artifacts
 - `.vscode/` - Contains MCP configuration
-- `.env-example` - Environment variable template
+- `.env.example` - Environment variable template
 
 #### Step 2: Configure Environment Variables
 
-1. Rename `.env-example` to `.env` in your project root
+1. Rename `.env.example` to `.env` in your project root
 2. Open the `.env` file and replace the placeholder with your actual Context7 API key:
 
 ```bash
@@ -36,7 +36,7 @@ CONTEXT7_API_KEY=your-actual-api-key-here
 3. Open `.vscode/mcp.json` and update the PropelIQ MCP server URL path:
 
 ```json
-"propel-iq": {
+"propel-sdlc": {
   "type": "http",
   "url": "<propel-mcp-url>/mcp"
 }

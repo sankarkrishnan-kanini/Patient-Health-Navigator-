@@ -10,4 +10,7 @@ node_modules/
 # Local environment
 .env
 
+# Development scripts
+prepare.js
+
 # Only include .env.example in package

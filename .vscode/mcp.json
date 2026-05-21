@@ -1,6 +1,6 @@
 {
   "servers": {
-    "propel-iq": {
+    "propel-sdlc": {
       "type": "http",
       "url": "<propel-mcp-url>/mcp"
     },

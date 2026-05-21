@@ -1,6 +1,6 @@
-# @kanini-software/propeliq-copilot-stub
+# propelsdlc-copilot-stub
 
-GitHub Copilot configuration stub for PropelIQ projects by KANINI Software Solutions. This package provides a complete setup for AI-assisted development with GitHub Copilot, including prompts, skills, instructions, and project configuration.
+GitHub Copilot configuration stub for PropelSDLC projects by KANINI Software Solutions. This package provides a complete setup for AI-assisted development with GitHub Copilot, including prompts, skills, instructions, and project configuration.
 
 **PROPRIETARY SOFTWARE** - This software is the property of KANINI Software Solutions. See LICENSE file for terms and conditions.
 
@@ -8,33 +8,19 @@ GitHub Copilot configuration stub for PropelIQ projects by KANINI Software Solut
 
 ### Prerequisites
 
-1. **Authenticate with GitHub Packages**
-   
-   Create a Personal Access Token (PAT) with `read:packages` scope:
-   - Go to GitHub Settings > Developer settings > Personal access tokens > Tokens (classic)
-   - Generate new token with `read:packages` permission
-   - Copy the token
-
-2. **Configure npm for GitHub Packages**
-   
-   Create or edit `~/.npmrc` (Windows: `%USERPROFILE%\.npmrc`):
-   ```
-   @kanini-software:registry=https://npm.pkg.github.com
-   //npm.pkg.github.com/:_authToken=YOUR_GITHUB_TOKEN
-   ```
-   
-   Replace `YOUR_GITHUB_TOKEN` with your PAT.
+- Node.js >= 14.0.0
+- npm (comes with Node.js)
 
 ### Install Package
 
 ```bash
-npm install -g @kanini-software/propeliq-copilot-stub
+npm install -g propelsdlc-copilot-stub
 ```
 
 Or as a dev dependency in your project:
 
 ```bash
-npm install --save-dev @kanini-software/propeliq-copilot-stub
+npm install --save-dev propelsdlc-copilot-stub
 ```
 
 ## Usage
@@ -42,13 +28,13 @@ npm install --save-dev @kanini-software/propeliq-copilot-stub
 Navigate to your project root directory and run:
 
 ```bash
-npx propeliq-init
+npx propelsdlc-copilot-stub
 ```
 
 Or if installed globally:
 
 ```bash
-propeliq-init
+propelsdlc-copilot-init
 ```
 
 The installer will copy configuration files to your current directory (where you run the command).
@@ -56,8 +42,8 @@ The installer will copy configuration files to your current directory (where you
 This will install the following to your project root:
 
 - `.github/` - GitHub Copilot prompts, instructions, skills, and agents
-- `.propel/` - PropelIQ templates, rules, prompts, and orchestrators
-- `.vscode/` - VS Code tasks and MCP configuration
+- `.propel/` - PropelSDLC templates, rules, prompts, and orchestrators
+- `.vscode/` - VS Code tasks and MCP configuration (mcp.json)
 - `.env.example` - Environment variable template
 
 **Note:** Existing files and folders will be skipped to preserve your customizations.
@@ -78,50 +64,37 @@ This will install the following to your project root:
 - **rules/** - Custom validation and enforcement rules
 - **orchestrators/** - Workflow orchestration definitions
 - **learnings/** - Captured patterns and findings
-- **hooks/** - PropelIQ hooks
+- **hooks/** - PropelSDLC hooks
 - **instructions.md** - Core workflow instructions
 - **id-scheme-registry.md** - ID scheme registry for artifacts
 - **project-config.json** - Project configuration
 - **requirements.txt** - Python dependencies for skills
 
 ### `.vscode/` Structure
-- **mcp.json** - Model Context Protocol configuration
+- **mcp.json** - Model Context Protocol server configuration
 - **tasks.json** - VS Code task definitions
 
 ## Post-Installation Steps
 
-1. **Review Environment Variables**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your project-specific values
-   ```
-
-2. **Configure Context7 API Key**
-   
-   Context7 provides AI-powered code search and semantic understanding. To enable it:
-   
-   - Get your API key from [Context7](https://context7.ai)
-   - Open `.vscode/mcp.json`
-   - Update the `context7` server configuration:
-     ```json
-     "context7": {
-       "command": "npx",
-       "args": ["-y", "@context7/mcp-server"],
-       "env": {
-         "CONTEXT7_API_KEY": "your-api-key-here"
-       }
-     }
+1. **Configure Environment Variables**
+   - Rename `.env.example` to `.env`
+   - Add your Context7 API key: `CONTEXT7_API_KEY=your-key-here`
+   - **IMPORTANT**: Add `.env` to your `.gitignore` to prevent exposing sensitive keys:
+     ```bash
+     echo .env >> .gitignore
      ```
-   - Replace `"your-api-key-here"` with your actual API key
-   - Restart VS Code to apply changes
+   
+   **Note**: The Context7 API key is read from the `.env` file, not directly from `.vscode/mcp.json`
+   
+   Get your Context7 API key at: https://context7.ai
 
-3. **Configure MCP Servers**
+2. **Configure MCP Servers**
    
    Model Context Protocol (MCP) servers extend AI assistant capabilities:
    
    - Open `.vscode/mcp.json`
    - Review enabled servers:
-     - `propel-iq` - PropelIQ template and workflow management
+     - `propel-iq` - PropelSDLC template and workflow management
      - `context7` - Semantic code search
      - `azure-mcp` - Azure resource management
      - `sequential-thinking` - Step-by-step reasoning
@@ -136,7 +109,7 @@ This will install the following to your project root:
      "mcpServers": {
        "propel-iq": {
          "command": "npx",
-         "args": ["-y", "@propeliq/mcp-server"]
+         "args": ["-y", "@propelsdlc/mcp-server"]
        },
        "context7": {
          "command": "npx",
@@ -156,15 +129,15 @@ This will install the following to your project root:
    }
    ```
 
-4. **Customize Copilot Instructions**
+3. **Customize Copilot Instructions**
    - Edit `.github/copilot-instructions.md` for your project
    - Review and modify `.github/instructions/*.instructions.md` as needed
 
-5. **Configure PropelIQ**
+4. **Configure PropelSDLC**
    - Update `.propel/project-config.json` with your project details
    - Review `.propel/instructions.md` for workflow guidance
 
-6. **Install Python Dependencies (if using skills)**
+5. **Install Python Dependencies (if using skills)**
    ```bash
    pip install -r .propel/requirements.txt
    ```
@@ -211,7 +184,7 @@ The installer skips existing files to preserve your customizations. To update sp
 
 3. **Re-run installer from your project root**
    ```bash
-   propeliq-init
+   propelsdlc-copilot-init
    ```
 
 4. **Merge customizations** from your backup if needed
@@ -221,7 +194,7 @@ The installer skips existing files to preserve your customizations. To update sp
 Remove all installed components and reinstall:
 ```bash
 rm -rf .github .propel .vscode .env.example
-propeliq-init
+propelsdlc-copilot-init
 ```
 
 ## Troubleshooting
@@ -230,7 +203,7 @@ propeliq-init
 The installer automatically skips existing files and folders to preserve your customizations. If you want to reinstall specific items, remove or rename them first.
 
 ### Wrong Installation Directory
-Always run `propeliq-init` from your project root directory. The installer copies files to the current working directory (where you execute the command).
+Always run `propelsdlc-copilot-init` from your project root directory. The installer copies files to the current working directory (where you execute the command).
 
 ### Permission Errors
 Ensure you have write permissions in the target directory.
@@ -240,6 +213,15 @@ Some features require Python packages. Install them with:
 ```bash
 pip install -r .propel/requirements.txt
 ```
+
+### Environment Variables & Security
+**Always add `.env` to `.gitignore`** to prevent exposing API keys:
+```bash
+echo .env >> .gitignore
+```
+Rename `.env.example` to `.env` and add your API keys. The Context7 API key is read from the `.env` file, not directly from `.vscode/mcp.json`.
+
+Get your Context7 API key at: https://context7.ai
 
 ## Customization
 
@@ -255,7 +237,7 @@ Key files to customize:
 
 For licensing, support, or questions:
 - Email: support@kanini.com
-- Website: https://www.kanini.com/propeliq
+- Website: https://www.kanini.com/propelsdlc
 - Documentation: Review installed files in `.github/` and `.propel/` folders
 
 ## License

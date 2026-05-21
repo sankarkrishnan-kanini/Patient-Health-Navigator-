@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * @kanini-software/propeliq-copilot-stub Installer
+ * propelsdlc-copilot-stub Installer
  * Copyright (c) 2026 KANINI Software Solutions. All rights reserved.
  * Proprietary and confidential.
  */
@@ -9,7 +9,8 @@
 const fs = require('fs');
 const path = require('path');
 
-const SOURCE_DIR = path.join(__dirname, '..', '..');
+// Source files are in the package root (one level up from bin/)
+const SOURCE_DIR = path.join(__dirname, '..');
 const TARGET_DIR = process.cwd();
 
 const ITEMS_TO_COPY = [
@@ -45,7 +46,7 @@ function copyRecursive(src, dest) {
 }
 
 function init() {
-  console.log('PropelIQ Copilot Stub Installer');
+  console.log('PropelSDLC Copilot Stub Installer');
   console.log('Copyright (c) 2026 KANINI Software Solutions. All rights reserved.\n');
   console.log('Installing to: ' + TARGET_DIR + '\n');
   
