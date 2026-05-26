@@ -5,22 +5,20 @@ As a Senior Infrastructure Engineer, generate production-ready Infrastructure as
 
 ## Execution
 1. Call MCP tool: `ReadPrompt(name="create-iac", version="latest")`.
-2. Pipe the **entire tool response** (header line + blank line + body) into the ingest script via stdin. No temp file - use your shell's multi-line input idiom:
+2. Run the ingest script on the tool response. **Do NOT use the Write tool to copy the response - it will stall on large payloads.** Use whichever applies:
 
-   - **Bash / Git Bash** (default for Claude Code on Windows, plus Linux/macOS):
-     ```bash
-     ./.propel/tools/ingest-prompt/ingest.sh <<'INGEST_END'
-     <paste the full response verbatim here>
-     INGEST_END
-     ```
-     The single-quoted `'INGEST_END'` delimiter preserves all special characters (dollar-sign, backticks, `+/=` in base64) literally.
+   - If your host already saved the MCP response to a file (e.g., `content.txt` in Copilot), pass that file path directly:
 
-   - **PowerShell / cmd**:
-     ```powershell
-     @'
-     <paste the full response verbatim here>
-     '@ | .\.propel\tools\ingest-prompt\ingest.cmd
-     ```
+         ./.propel/tools/ingest-prompt/ingest.sh <existing-file>
+
+   - Otherwise, materialize the response via shell redirection (NOT via Write tool):
+
+         cat > /tmp/ingest-input.txt <<'INGEST_END'
+         <paste full response>
+         INGEST_END
+         ./.propel/tools/ingest-prompt/ingest.sh /tmp/ingest-input.txt
+
+   On Windows-native shells use `ingest.cmd` instead of `ingest.sh`. The temp file in `/tmp` is small and will be cleaned by the OS - do not invoke `rm` (the host may block it).
 
    Capture stdout. If exit code is non-zero OR stdout is empty, HALT and report: **"Failed to ingest the prompt. Aborting."** Do not attempt to interpret the raw tool response.
 
