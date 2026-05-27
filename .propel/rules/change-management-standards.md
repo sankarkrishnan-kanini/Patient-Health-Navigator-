@@ -1,7 +1,7 @@
-# change-management-standards
+﻿# change-management-standards
 
 ## Read the rules from PropelIQ MCP
 Call MCP tool:
-    - ReadRule(name="change-management-standards", version="latest")
+    - ReadRule(name="change-management-standards", version="1.0")
 
 - Update ToDo list derived from the returned rule instructions by readjusting the items.

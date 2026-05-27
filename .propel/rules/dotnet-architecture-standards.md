@@ -1,7 +1,7 @@
-# dotnet-architecture-standards
+﻿# dotnet-architecture-standards
 
 ## Read the rules from PropelIQ MCP
 Call MCP tool:
-    - ReadRule(name="dotnet-architecture-standards", version="latest")
+    - ReadRule(name="dotnet-architecture-standards", version="1.0")
 
 - Update ToDo list derived from the returned rule instructions by readjusting the items.
