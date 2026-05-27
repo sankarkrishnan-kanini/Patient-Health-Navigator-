@@ -4,7 +4,7 @@ description: Interview the user about a plan or design, run a gap-elicitation pr
 license: MIT
 metadata:
   author: KANINI
-  version: 1.0.0
+  version: 1.1.0
 ---
 
 ## Rendering Contract (applies to all three modes)
@@ -14,7 +14,7 @@ Prefer the host's `AskUserQuestion` tool for rendering every question. The tool 
 **Hard rules — violating any of these is a contract violation:**
 
 - **One question per turn.** Never render a second question in the same turn. Stop output after the question block and wait for human input.
-- **Exactly 3 concrete options + 1 Custom = 4 total.** Never more. Never fewer.
+- **Exactly 3 concrete options + 1 Custom = 4 total.** Never more. Never fewer. *Exception:* Mode 1 open-discovery first turn — see Mode 1 section.
 - **The first option is the recommended choice** (tagged `*recommended*`).
 - **The second and third options are material alternatives** — distinct enough that picking between them changes downstream output.
 - **The fourth option is always `Custom: _enter your own answer_`** — a free-form escape hatch.
@@ -23,7 +23,28 @@ Prefer the host's `AskUserQuestion` tool for rendering every question. The tool 
 
 ## Mode 1 — Open-Ended Interview
 
-Interview the user relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one.
+Interview the user relentlessly until the **caller-supplied goal** is reached. The caller provides:
+
+- **`$INTERVIEW_GOAL`** — one sentence describing what "done" looks like for this interview (e.g. "every business problem has a measurable success criterion", "every architectural decision has a confirmed driver and trade-off", "every sprint item has an owner and acceptance condition").
+- **`$BRANCHES`** — the set of topics the caller wants covered (a list, table, or tree). The skill treats these as a *map*, not a fixed sequence.
+
+If the caller does not supply `$INTERVIEW_GOAL`, default to: *"every branch in `$BRANCHES` has concrete, decision-ready answers — no vague, contradictory, or unresolved items remain"*.
+
+### Universal drill discipline (Mode 1 questions and Mode 2 per-gap turns)
+
+- **Drill, don't skim.** Vague answers ("users", "soon", "better", "robust") trigger a tighter follow-up. Stay on the topic until the answer is **decision-ready** — the caller's next step could act on it without further clarification. No question cap.
+- **Self-check after ~5 follow-ups on the same topic.** If you're confirming rather than gaining new information, mark decision-ready and advance.
+
+### Mode 1 — Open-discovery, goal-state, cross-branch steering
+
+- **First turn is free-text.** Opener questions with no prior context to ground three alternatives bypass the 4-option contract — ask once, accept whatever the human says. The 4-option format applies to follow-ups once context exists.
+- **Track goal-state per branch** (Open / Decision-ready / Confirmed). Mode 1 exits only when `$INTERVIEW_GOAL` holds across all in-scope branches.
+- **Steer across branches.** If an answer exposes a gap in another branch (new actor, new constraint, contradiction with earlier scope), jump to it, resolve, return. Do not enforce linear order at the cost of unresolved cross-branch contradictions.
+- **Stop:** goal reached AND information gain ≈ 0, OR human override (`enough` / `skip all` / `wrap up`). On override, return Open branches to the caller.
+
+### Mode 2 — Cross-gap steering
+
+Mode 2 callers do not supply `$INTERVIEW_GOAL` / `$BRANCHES`; the gap detection table and severity classification are the equivalent. If resolving one gap exposes a new gap, append it to the active queue in severity order — do not drop it.
 
 ### Markdown fallback format
 
@@ -140,16 +161,16 @@ Planned [artifact_kind] coverage shown above. Any issues?
 ```text
 [total_count] inferred items detected ([low_count] LOW, [medium_count] MEDIUM, [high_count] HIGH confidence). Review depth?
 
-  (a) Review only LOW-confidence items ([low_count]) *recommended*
-  (b) Review all [total_count] one-by-one
-  (c) Accept all as [SOURCE:INFERRED] — skip review, downstream sees them as unconfirmed
-  (d) Custom: _enter your own answer_
+  (a) Review LOW + MEDIUM ([low_count]+[medium_count]) *recommended*
+  (b) Review only LOW ([low_count])
+  (c) Review all [total_count] one-by-one
+  (d) Custom: _enter your own answer_ (e.g., "skip review", "specific IDs")
 ```
 
-- (a) → loop over LOW only; HIGH/MEDIUM auto-flipped to `[SOURCE:INPUT]`, no ledger write.
-- (b) → loop over all.
-- (c) → exit; all stay `[SOURCE:INFERRED]`.
-- (d) → caller parses free text (e.g., "review MEDIUM and LOW", specific IDs).
+- (a) → loop over LOW + MEDIUM; HIGH auto-flipped to `[SOURCE:INPUT]`, no ledger write. **Default for general use** — surfaces anything not strongly grounded.
+- (b) → loop over LOW only; MEDIUM + HIGH auto-flipped to `[SOURCE:INPUT]`.
+- (c) → loop over all.
+- (d) → caller parses free text. `"skip review"` → exit; all stay `[SOURCE:INFERRED]`.
 
 ### `inferred_review` (per-item)
 
