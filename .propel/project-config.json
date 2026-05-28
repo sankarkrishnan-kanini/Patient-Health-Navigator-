@@ -5,7 +5,7 @@
     "baseProjectPath": "./",
     "artifacts": {
         "brainstorm": {
-            "propelFileName": "brainstorm.md",
+            "propelFileName": "brd.md",
             "propelDirPath": "${basePropelPath}/docs",
             "templates": {
                 "default": ".propel/templates/brainstorm-template.md"
