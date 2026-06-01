@@ -411,6 +411,39 @@
             "mcpType": "local",
             "references": ["codeanalysis", "spec", "design"],
             "workflow": "/build-prototype"
+        },
+        "snowpark_conversion": {
+            "propelFileNames": {
+                "procedure": "snowpark_<script_name>_proc.sql",
+                "deploy": "snowpark_<script_name>_deploy.sql",
+                "usage": "snowpark_<script_name>_usage.md",
+                "data_setup": "snowpark_<script_name>_data_setup.sql"
+            },
+            "propelDirPath": "${basePropelPath}/snowpark",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "code",
+            "mcpType": "local",
+            "references": [
+                "findings_registry",
+                "signal_ledger"
+            ],
+            "workflow": "/convert-to-snowpark"
+        },
+        "knowledge": {
+            "propelFileName": "",
+            "propelDirPath": "./.propel/knowledge",
+            "vaultExport": true,
+            "vaultPath": "./.propel/knowledge-vault",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "json",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "/acquire-knowledge",
+            "_note": "Infrastructure-action workflow. Produces JSON tree files under propelDirPath. No markdown artifact. propelFileName intentionally empty. Custom paths derived by workflow from propelDirPath: index.json, tribal/registry.json, lint-report.json. vaultExport=true enables Obsidian note generation alongside JSON trees."
         }
     }
 }

@@ -25,9 +25,12 @@ import os
 import hashlib
 import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _config import load_knowledge_paths
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 
-KNOWLEDGE_ROOT = ".propel/knowledge"
+KNOWLEDGE_ROOT = load_knowledge_paths().get("knowledge_root", ".propel/knowledge")
 INDEX_PATH = os.path.join(KNOWLEDGE_ROOT, "index.json")
 TRIBAL_REGISTRY_PATH = os.path.join(KNOWLEDGE_ROOT, "tribal", "registry.json")
 

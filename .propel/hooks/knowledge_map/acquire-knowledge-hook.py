@@ -22,6 +22,9 @@ import os
 import re
 import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _config import load_knowledge_paths
+
 # ─── Configuration ────────────────────────────────────────────────────────────
 
 # Directories that contain Propel-IQ SDLC artifacts
@@ -56,7 +59,7 @@ IGNORE_EXTENSIONS = {
 }
 
 # Knowledge map root — must match project-config.json propelDirPath
-KNOWLEDGE_ROOT = ".propel/knowledge"
+KNOWLEDGE_ROOT = load_knowledge_paths().get("knowledge_root", ".propel/knowledge")
 
 # ─── Field extraction ─────────────────────────────────────────────────────────
 

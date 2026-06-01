@@ -17,8 +17,10 @@ import os
 import glob
 import datetime
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _config import load_knowledge_paths
 
-KNOWLEDGE_ROOT = ".propel/knowledge"
+KNOWLEDGE_ROOT = load_knowledge_paths().get("knowledge_root", ".propel/knowledge")
 PENDING_DIR = os.path.join(KNOWLEDGE_ROOT, "pending")
 MAX_AGE_HOURS = 24
 
