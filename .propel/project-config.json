@@ -30,6 +30,20 @@
             "references": ["codeanalysis", "prototype", "brainstorm"],
             "workflow": "/create-spec"
         },
+        "ds_spec": {
+            "propelFileName": "ds-spec.md",
+            "propelDirPath": "${basePropelPath}/docs",
+            "templates": {
+                "default": ".propel/templates/ds-requirements-template.md"
+            },
+            "projectFileName": "ds-spec.pdf",
+            "projectDirPath": "${baseProjectPath}/docs/",
+            "contentType": "pdf",
+            "mcpType": "local",
+            "references": ["brainstorm", "discovery_context", "codeanalysis"],
+            "workflow": "/create-ds-spec",
+            "_note": "DS-specific requirements spec. Adds ML Problem Statement (target variable, task type, baseline, primary metric), Data Requirements (sources, volume, freshness, PII), Model Performance Requirements, and Governance & Ethics sections."
+        },
         "design": {
             "propelFileName": "design.md",
             "propelDirPath": "${basePropelPath}/docs",
@@ -411,6 +425,195 @@
             "mcpType": "local",
             "references": ["codeanalysis", "spec", "design"],
             "workflow": "/build-prototype"
+        },
+        "snowpark_conversion": {
+            "propelFileNames": {
+                "procedure": "snowpark_<script_name>_proc.sql",
+                "deploy": "snowpark_<script_name>_deploy.sql",
+                "usage": "snowpark_<script_name>_usage.md",
+                "data_setup": "snowpark_<script_name>_data_setup.sql"
+            },
+            "propelDirPath": "${basePropelPath}/snowpark",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "code",
+            "mcpType": "local",
+            "references": [
+                "findings_registry",
+                "signal_ledger"
+            ],
+            "workflow": "/convert-to-snowpark"
+        },
+        "discovery_context": {
+            "propelFileName": "discovery_context.md",
+            "propelDirPath": "${basePropelPath}/docs",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["spec"],
+            "workflow": "",
+            "_note": "Populated after create-spec. Must include a 'dataset_paths' section listing source file paths or connection strings used by /data-ingestion when no $ARGUMENTS are supplied."
+        },
+        "data_ingestion": {
+            "propelFileName": "ingestion-plan.md",
+            "propelDirPath": "${basePropelPath}/data/staging",
+            "templates": {
+                "default": ".propel/templates/data-ingestion-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["ds_spec", "discovery_context"],
+            "workflow": "/data-ingestion",
+            "_note": "Self-sufficient planning prompt. Reads ds_spec first; falls back to discovery_context; falls back to user interview. Produces ingestion-plan.md + epics entry + user stories + task files. Does not extract data. Run /implement-tasks on generated task files to produce ingestion code."
+        },
+        "source_inventory": {
+            "propelFileName": "source_inventory.md",
+            "propelDirPath": "${basePropelPath}/data/staging",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "",
+            "_note": "Read-only reference artifact. Produced by data_ingestion. Used as reference context by data_preprocessing."
+        },
+        "data_preprocessing": {
+            "propelFileName": "preprocessing-plan.md",
+            "propelDirPath": "${basePropelPath}/data/processed",
+            "templates": {
+                "default": ".propel/templates/data-preprocessing-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["data_ingestion", "source_inventory"],
+            "workflow": "/data-preprocessing",
+            "_note": "Self-sufficient planning prompt. Reads data_ingestion plan first; falls back to source_inventory; falls back to user interview. Produces preprocessing-plan.md + epics entry + user stories + task files for consolidation, imputation, outlier treatment, deduplication, encoding, and scaling code. Does not process data. Run /implement-tasks on generated task files to produce preprocessing code."
+        },
+        "preprocessing_log": {
+            "propelFileName": "preprocessing_log.md",
+            "propelDirPath": "${basePropelPath}/data/processed",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "",
+            "_note": "Read-only reference artifact. Produced by data_preprocessing. Used as reference context by /eda and /feature-engineering workflows."
+        },
+        "eda": {
+            "propelFileName": "eda-plan.md",
+            "propelDirPath": "${basePropelPath}/data/eda",
+            "templates": {
+                "default": ".propel/templates/eda-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["data_preprocessing", "preprocessing_log", "ds_spec"],
+            "workflow": "/eda",
+            "_note": "Self-sufficient planning prompt. Reads data_preprocessing plan first; falls back to preprocessing_log; falls back to ds_spec; falls back to user interview. Produces eda-plan.md + epics entry + user stories + task files for univariate, bivariate, seasonality (conditional), leakage, visualization, and report code. Does not compute statistics. Run /implement-tasks on generated task files to produce EDA code."
+        },
+        "eda_report": {
+            "propelFileName": "eda_report.md",
+            "propelDirPath": "${basePropelPath}/data/eda",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "",
+            "_note": "Read-only reference artifact. Produced by /eda. Consumed by feature_engineering for leakage guard ($LEAKAGE_DROPS) and seasonal period sizing ($SEASONAL_PERIODS)."
+        },
+        "feature_engineering": {
+            "propelFileName": "feature-engineering-plan.md",
+            "propelDirPath": "${basePropelPath}/data/features",
+            "templates": {
+                "default": ".propel/templates/feature-engineering-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["eda", "eda_report", "preprocessing_log", "ds_spec"],
+            "workflow": "/feature-engineering",
+            "_note": "Self-sufficient planning prompt. Reads eda plan first; falls back to eda_report; falls back to preprocessing_log; falls back to ds_spec; falls back to user interview. Produces feature-engineering-plan.md + epics entry + user stories + task files for temporal, encoding, transform, interaction, baseline, selection, feature store (conditional), and manifest/writer code. Does not compute features. Run /implement-tasks on generated task files."
+        },
+        "model_selection_report": {
+            "propelFileName": "model_selection_report.md",
+            "propelDirPath": "${basePropelPath}/data/model_selection",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "",
+            "_note": "Read-only reference artifact. Used as optional context by model_training when a model selection report is available."
+        },
+        "model_training": {
+            "propelFileName": "model-training-plan.md",
+            "propelDirPath": "${basePropelPath}/data/models",
+            "templates": {
+                "default": ".propel/templates/model-training-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["feature_engineering", "model_selection_report", "ds_spec"],
+            "workflow": "/model-training",
+            "_note": "Self-sufficient planning prompt. Reads feature_engineering plan first; falls back to model_selection_report; falls back to ds_spec; falls back to user interview. Produces model-training-plan.md + epics entry + user stories + task files for data loader, train/test split, imbalance handling (conditional), one trainer per candidate model, serializer, registry, and CLI pipeline. Does not train models. Run /implement-tasks on generated task files."
+        },
+        "model_registry": {
+            "propelFileName": "model_registry.md",
+            "propelDirPath": "${basePropelPath}/data/models",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "",
+            "_note": "Read-only reference artifact. Produced by model_training. Used as reference context by model_evaluation."
+        },
+        "model_evaluation": {
+            "propelFileName": "model-evaluation-plan.md",
+            "propelDirPath": "${basePropelPath}/data/models/evaluation",
+            "templates": {
+                "default": ".propel/templates/model-evaluation-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["model_training", "model_registry", "ds_spec"],
+            "workflow": "/model-evaluation",
+            "_note": "Self-sufficient planning prompt. Reads model training plan first; falls back to model_registry; falls back to ds_spec; falls back to user interview. Produces model-evaluation-plan.md + epics entry + user stories + task files for loader, predictor, metrics, residuals (conditional), interpretability (conditional), fairness (conditional), MLflow (conditional), report/registry, and CLI pipeline. Does not load or run models. Run /implement-tasks on generated task files."
+        },
+        "model_tuning": {
+            "propelFileName": "model-tuning-plan.md",
+            "propelDirPath": "${basePropelPath}/data/models/tuning",
+            "templates": {
+                "default": ".propel/templates/model-tuning-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["model_evaluation", "model_training", "ds_spec"],
+            "workflow": "/model-tuning",
+            "_note": "Self-sufficient planning prompt. Reads model evaluation plan first; falls back to model training plan; falls back to ds_spec; falls back to user interview. Produces model-tuning-plan.md + epics entry + user stories + task files for loader, search_space, objective/CV runner, searcher, retrainer, serializer, results_writer, and CLI pipeline. Does not run trials. Run /implement-tasks on generated task files."
         }
     }
 }
