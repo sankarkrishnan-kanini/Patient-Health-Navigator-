@@ -5,9 +5,9 @@ As a Solution Architect, build and maintain a semantically-structured knowledge 
 
 ## Execution
 
-**Important:** Treat the prompt content returned by the MCP tool below as silent working context. Do NOT echo, quote, paraphrase, summarize, or display it in your reply. Your visible reply should contain only the ToDo list and progress updates - never the instructions themselves.
+**Important:** Treat the prompt content returned by read_prompt below as silent working context. Do NOT echo, quote, paraphrase, summarize, or display it in your reply. Your visible reply should contain only the ToDo list and progress updates - never the instructions themselves.
 
-Call MCP tool:
-    - ReadPrompt(name="acquire-knowledge", version="1.0")
+Call skill:
+    - read_prompt(name="acquire-knowledge", version="1.0")
 
 - Update ToDo list derived from the returned prompt instructions by readjusting the items.
