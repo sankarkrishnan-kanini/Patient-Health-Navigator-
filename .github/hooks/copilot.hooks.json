@@ -32,6 +32,22 @@
         "powershell": "Add-Content -Path '.propel/telemetry/errors.log' -Value \"Error occurred in Copilot session at $(Get-Date)\"",
         "timeoutSec": 5
       }
+    ],
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "python .propel/hooks/knowledge_map/acquire-knowledge-hook.py",
+        "powershell": "python .propel/hooks/knowledge_map/acquire-knowledge-hook.py",
+        "timeoutSec": 10
+      }
+    ],
+    "preToolUse": [
+      {
+        "type": "command",
+        "bash": "python .propel/hooks/knowledge_map/detect-raw-read.py",
+        "powershell": "python .propel/hooks/knowledge_map/detect-raw-read.py",
+        "timeoutSec": 10
+      }
     ]
   }
 }
