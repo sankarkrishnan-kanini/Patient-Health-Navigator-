@@ -18,8 +18,12 @@ This skill can be invoked explicitly as `/artifact-resolver <arg>`:
 - `/artifact-resolver <key>` — resolve any named artifact (e.g., `spec`, `design`, `model`)
 - `/artifact-resolver --list` — list all available artifact keys
 - `/artifact-resolver --all` — resolve all artifacts at once
+- `/artifact-resolver --tribal <label>` — resolve a tribal knowledge entry by label
+- `/artifact-resolver --derived <label>` — resolve a derived knowledge entry by label
+- `/artifact-resolver --list-tribal` — list all tribal labels
+- `/artifact-resolver --list-derived` — list all derived labels
 
-`<key>` is any artifact key defined in `assets/project-config.json`. Use `--list` first if unsure what keys exist.
+`<key>` is any artifact key defined in `assets/project-config.json`. Use `--list` first if unsure what keys exist. Tribal/derived labels are registered dynamically by `/acquire-knowledge` — use `--list-tribal` / `--list-derived` to discover them.
 
 When invoked via slash command, parse the argument and run the resolver script accordingly.
 `<skill-path>` is the absolute path to the directory containing this SKILL.md file — resolve it at runtime before executing any script:
@@ -30,6 +34,14 @@ python <skill-path>/scripts/resolve_artifact.py --list
 
 # If arg is --all
 python <skill-path>/scripts/resolve_artifact.py --all
+
+# If arg is --list-tribal / --list-derived
+python <skill-path>/scripts/resolve_artifact.py --list-tribal
+python <skill-path>/scripts/resolve_artifact.py --list-derived
+
+# If arg is --tribal <label> / --derived <label>
+python <skill-path>/scripts/resolve_artifact.py --tribal <label>
+python <skill-path>/scripts/resolve_artifact.py --derived <label>
 
 # Otherwise, treat arg as an artifact key
 python <skill-path>/scripts/resolve_artifact.py --artifact <key>
@@ -105,7 +117,12 @@ When you call `/artifact-resolver <key>`, the resolver returns:
   "contentType": "pdf",
   "mcpType": "local",
   "references": [],
-  "workflow": "/create-spec"
+  "workflow": "/create-spec",
+  "knowledgePath": "./.propel/knowledge/artifacts/spec/spec.tree.json",
+  "knowledgeLinksPath": "./.propel/knowledge/artifacts/spec/spec.links.json",
+  "knowledgeStatus": "fresh",
+  "knowledgeSummary": "SaaS analytics platform — 23 functional requirements across dashboard, reporting, and user management.",
+  "knowledgeAcquiredAt": "2026-05-28T10:14:00Z"
 }
 ```
 
@@ -119,6 +136,57 @@ When you call `/artifact-resolver <key>`, the resolver returns:
 - **templates** — object map of named template paths, passed through from config as-is
 - **schema** — path to the artifact's schema contract, passed through from config as-is (empty string if the artifact has no schema)
 - **contentType** / **mcpType** / **references** / **workflow** — passed through from config as-is
+- **knowledgePath** — fully resolved path to the knowledge map tree file for this artifact (always computed; may not exist on disk)
+- **knowledgeLinksPath** — fully resolved path to the knowledge map links file (traceability edges)
+- **knowledgeStatus** — one of:
+  - `fresh` — tree file exists AND its `source_hash` matches the SHA-256 of the current `propelFilePath` contents
+  - `stale` — tree file exists BUT `source_hash` differs from current file hash
+  - `missing` — tree file does not exist
+  - `not_applicable` — `propelFilePath` does not exist on disk (artifact not yet produced, or multi-file artifact with no canonical source)
+- **knowledgeSummary** — the one-sentence semantic summary from the tree file (max 20 words), or `null` when status is `missing` / `not_applicable`
+- **knowledgeAcquiredAt** — ISO-8601 timestamp of last acquisition, or `null` when no tree exists
+
+## Resolving tribal & derived knowledge
+
+Tribal (external docs) and derived (workflow synthesis) knowledge are **not** defined in `project-config.json`. They are registered dynamically by `/acquire-knowledge` in registries under `.propel/knowledge/`:
+
+- Tribal: `.propel/knowledge/tribal/registry.json` (`sources[]`)
+- Derived: `.propel/knowledge/derived/registry.json` (`entries[]`)
+
+Both are looked up by **label** (user-chosen at acquisition time), not by config key. The output shape differs from artifacts — no `propelFilePath`, `templates`, or `workflow`, because these are raw knowledge entries.
+
+**Tribal output shape:**
+
+```json
+{
+  "label": "oauth-rfc",
+  "sourceType": "tribal",
+  "sourceRef": "https://datatracker.ietf.org/doc/html/rfc6749",
+  "knowledgePath": "./.propel/knowledge/tribal/oauth-rfc/oauth-rfc.tree.json",
+  "knowledgeLinksPath": "./.propel/knowledge/tribal/oauth-rfc/oauth-rfc.links.json",
+  "knowledgeStatus": "fresh",
+  "knowledgeSummary": "OAuth 2.0 authorization framework — 4 grant types, token endpoints, security considerations.",
+  "knowledgeAcquiredAt": "2026-05-28T10:14:00Z",
+  "freshnessStrategy": "manual",
+  "ttlDays": null,
+  "notes": ""
+}
+```
+
+**Derived output shape:** replaces `sourceRef` with `upstreamNodes: [...]` (node IDs that were synthesized) and omits `freshnessStrategy` / `ttlDays`.
+
+**Status semantics differ per source/strategy:**
+
+| Source / Strategy | `fresh` when | `stale` when |
+|-------------------|--------------|--------------|
+| Tribal `hash_watch` (local file) | tree `source_hash` matches current file hash | hash differs |
+| Tribal `manual` | acquired within last 90 days | acquired more than 90 days ago |
+| Tribal `ttl` | acquired within `ttlDays` window | past expiry |
+| Derived | no upstream node belongs to a tree re-acquired after this entry | any upstream re-acquired later |
+
+Registry entry exists but the tree file is missing on disk → `missing` (also flagged by `memory-lint` as a registry-integrity error).
+
+The same "Knowledge map preference" precedence (see below) applies uniformly to tribal and derived entries.
 
 ## Resolving artifacts
 
@@ -145,7 +213,16 @@ For simple cases, just read the bundled `<skill-path>/assets/project-config.json
 
 ## After resolving
 
-Once you have the artifact details, act on `mcpType` first, then interpret content using `contentType`:
+**Knowledge map preference:** Before acting on `mcpType` / `contentType`, consult `knowledgeStatus`. The knowledge map (second brain) is the preferred entry point; raw-reading `propelFilePath` is a last-resort fallback. See `.propel/rules/knowledge-protocol.md` Rule 7 for the full contract.
+
+| `knowledgeStatus` | Action |
+|-------------------|--------|
+| `fresh` | Navigate `knowledgePath` per knowledge-protocol Rules 2/3. Do not raw-read `propelFilePath`. |
+| `stale` | Trigger `/acquire-knowledge --source <propelFilePath>`, wait, re-resolve. |
+| `missing` | Trigger `/acquire-knowledge --source <propelFilePath>`, wait, re-resolve. Second miss → raw-read `propelFilePath` with `<!-- KNOWLEDGE-GAP: <path> not yet indexed -->` comment. |
+| `not_applicable` | Source file absent — defer to the calling workflow's miss policy (typically: the artifact has not been produced yet). |
+
+Once `knowledgeStatus = fresh` (or fallback is authorised), act on `mcpType` first, then interpret content using `contentType`:
 
 **mcpType handling:**
 - `local` — read the file directly using the resolved `propelFilePath`. Prepend the project root if the path is relative.

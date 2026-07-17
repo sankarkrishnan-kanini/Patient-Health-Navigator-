@@ -55,3 +55,9 @@
 - **Simplicity First**: Make every change as simple as possible. Impact minimal code.
 - **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
 - **Minimal Impact**: Changes should only touch what's necessary. Avoid introducing bugs.
+
+## Knowledge Map
+
+- This project leverages a Knowledge Map system (.propel/knowledge/).
+- When accessing **$REFERENCE_DOCS** or project artifacts during any workflow step:
+    consult `.propel/rules/knowledge-protocol.md` for the complete access protocol.
