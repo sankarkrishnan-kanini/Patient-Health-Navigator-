@@ -5,7 +5,7 @@
     "baseProjectPath": "./",
     "artifacts": {
         "brainstorm": {
-            "propelFileName": "brd.md",
+            "propelFileName": "brainstorm.md",
             "propelDirPath": "${basePropelPath}/docs",
             "templates": {
                 "default": ".propel/templates/brainstorm-template.md"
@@ -458,6 +458,7 @@
             "references": [],
             "workflow": "/acquire-knowledge",
             "_note": "Infrastructure-action workflow. Produces JSON tree files under propelDirPath. No markdown artifact. propelFileName intentionally empty. Custom paths derived by workflow from propelDirPath: index.json, tribal/registry.json, lint-report.json. vaultExport=true enables Obsidian note generation alongside JSON trees."
+        },
         "discovery_context": {
             "propelFileName": "discovery_context.md",
             "propelDirPath": "${basePropelPath}/docs",
