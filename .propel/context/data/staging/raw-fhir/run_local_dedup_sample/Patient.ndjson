@@ -1,0 +1,1 @@
+{"runId":"run_local_dedup_sample","sourceFile":"tests/fixtures/fhir-batch/bundle-duplicates.json","resourceType":"Patient","resourceId":"patient-dup-001","ingestedAt":"2026-07-29T10:07:09.353Z","payload":{"resourceType":"Patient","id":"patient-dup-001"}}

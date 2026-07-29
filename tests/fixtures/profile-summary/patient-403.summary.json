@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "v1.0",
+  "profileId": "patient-403",
+  "patientId": "patient-403",
+  "sourceRunId": "run_showcase_diverse",
+  "profileVersion": "v-cohort",
+  "generatedAt": "2026-07-29T00:00:00.000Z",
+  "counts": {
+    "activeConditions": 0,
+    "activeMedications": 0,
+    "careTasks": 1,
+    "upcomingAppointments": 1,
+    "observations": 0,
+    "sdohFlags": 0
+  },
+  "highlights": {
+    "topConditions": [],
+    "topMedications": [],
+    "nextAppointment": {
+      "encounterId": "encounter-1",
+      "start": "2099-01-01T00:00:00Z",
+      "status": "planned"
+    },
+    "keyObservations": [],
+    "sdohFlags": []
+  }
+}

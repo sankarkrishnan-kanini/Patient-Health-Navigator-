@@ -1,0 +1,1 @@
+{"runId":"run_local_norm_sample","sourceFile":"tests/fixtures/fhir-batch/bundle-normalization.json","resourceType":"Patient","resourceId":"patient-002","ingestedAt":"2026-07-29T09:30:51.466Z","payload":{"resourceType":"Patient","id":"patient-002","gender":"male"}}

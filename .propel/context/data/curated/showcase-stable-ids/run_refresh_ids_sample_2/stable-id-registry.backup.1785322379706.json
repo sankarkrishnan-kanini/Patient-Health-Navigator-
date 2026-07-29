@@ -1,0 +1,80 @@
+[
+  {
+    "stableId": "sp-10f7fb175ef7",
+    "identityKey": "patient-401",
+    "profileId": "patient-401",
+    "patientId": "patient-401",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-401.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  },
+  {
+    "stableId": "sp-38779d3f6923",
+    "identityKey": "patient-403",
+    "profileId": "patient-403",
+    "patientId": "patient-403",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-403.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  },
+  {
+    "stableId": "sp-748010cb2eb9",
+    "identityKey": "patient-405",
+    "profileId": "patient-405",
+    "patientId": "patient-405",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-405.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  },
+  {
+    "stableId": "sp-95b665dfd058",
+    "identityKey": "patient-404",
+    "profileId": "patient-404",
+    "patientId": "patient-404",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-404.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  },
+  {
+    "stableId": "sp-b2d29a16d929",
+    "identityKey": "patient-400",
+    "profileId": "patient-400",
+    "patientId": "patient-400",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-400.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.157Z",
+    "lastSeenAt": "2026-07-29T10:52:19.157Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  },
+  {
+    "stableId": "sp-b32e3f66406e",
+    "identityKey": "patient-402",
+    "profileId": "patient-402",
+    "patientId": "patient-402",
+    "sourceRunId": "run_showcase_diverse",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-402.json",
+    "active": true,
+    "firstSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastSeenAt": "2026-07-29T10:52:19.158Z",
+    "lastRefreshRunId": "run_refresh_ids_sample_1"
+  }
+]

@@ -1,0 +1,48 @@
+{
+  "runId": "run_local_fhir_sample",
+  "inputPath": "tests/fixtures/fhir-batch",
+  "stagedDirectory": ".propel\\context\\data\\staging\\raw-fhir\\run_local_fhir_sample",
+  "quarantineDirectory": ".propel\\context\\data\\quarantine\\raw-fhir\\run_local_fhir_sample",
+  "scannedFiles": 3,
+  "stagedResources": 6,
+  "failedFiles": 2,
+  "resourceCounts": {
+    "Patient": {
+      "success": 1,
+      "failure": 0
+    },
+    "Condition": {
+      "success": 1,
+      "failure": 0
+    },
+    "MedicationRequest": {
+      "success": 1,
+      "failure": 0
+    },
+    "CarePlan": {
+      "success": 1,
+      "failure": 0
+    },
+    "Encounter": {
+      "success": 1,
+      "failure": 0
+    },
+    "Observation": {
+      "success": 1,
+      "failure": 0
+    }
+  },
+  "failures": [
+    {
+      "runId": "run_local_fhir_sample",
+      "sourceFile": "tests\\fixtures\\fhir-batch\\malformed.json",
+      "reason": "Invalid JSON content."
+    },
+    {
+      "runId": "run_local_fhir_sample",
+      "sourceFile": "tests\\fixtures\\fhir-batch\\unsupported-resource.json",
+      "reason": "Unsupported resource type: AllergyIntolerance"
+    }
+  ],
+  "completedAt": "2026-07-29T09:21:20.578Z"
+}

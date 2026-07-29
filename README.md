@@ -6,6 +6,126 @@ PropelIQ-Copilot is an AI-powered development framework that automates software 
 
 ## Setup
 
+### Local App Scaffold Run
+
+The workspace includes a Next.js App Router scaffold in the repository root.
+
+Run the app locally:
+
+```bash
+npm install
+npm run dev
+```
+
+Run the unit test baseline:
+
+```bash
+npm run test
+npm run test:watch
+```
+
+Run the E2E smoke baseline:
+
+```bash
+npx playwright install chromium
+npm run test:e2e
+npm run test:e2e:headed
+npx playwright show-report
+```
+
+Run the CI-ready quality baseline:
+
+```bash
+npm run lint
+npm run test
+npm run test:e2e
+npm run build
+```
+
+If a CI step fails, re-run that step locally first, then execute the full baseline sequence above.
+
+Run the FHIR ingestion sample:
+
+```bash
+npm run ingest:fhir -- --input tests/fixtures/fhir-batch --run-id run_local_fhir_sample
+```
+
+FHIR ingestion output locations:
+- Staging records: `.propel/context/data/staging/raw-fhir/<run-id>/`
+- Quarantined invalid files: `.propel/context/data/quarantine/raw-fhir/<run-id>/`
+- Run summary: `.propel/context/data/staging/raw-fhir/<run-id>/run-summary.json`
+
+Open `http://localhost:3000` to view the scaffold.
+
+Base placeholder routes:
+- `/`
+- `/chat`
+- `/profile`
+
+Scaffolded API endpoints:
+- `GET /api/health` -> `200` with service status payload
+- `GET/POST /api/chat` -> `501` not implemented placeholder
+- `GET/POST /api/patient-profile` -> `501` not implemented placeholder
+
+Current unit-test coverage baseline:
+- `tests/lib/api-response.test.ts`
+- `tests/lib/config.test.ts`
+
+Current E2E smoke coverage baseline:
+- `tests/e2e/smoke.spec.ts`
+
+Generated E2E artifacts:
+- `playwright-report/` for HTML results
+- `test-results/` for failure traces, screenshots, and videos
+
+### Environment Profiles
+
+Use `.env.example` as the baseline template and copy values into `.env` for local development.
+
+Defined variables:
+- `APP_ENV`: `local` or `production` (defaults to `local` when omitted)
+- `APP_NAME`: service name used in health output (defaults to `patient-ai-health-navigator`)
+- `LOG_LEVEL`: logging verbosity placeholder (defaults to `info`)
+- `OPENAI_API_KEY`: required for protected chat operations (request-time validation)
+- `MYSQL_URL`: required for protected patient profile operations (request-time validation)
+
+Local profile guidance:
+- Set `APP_ENV=local` and provide only the integrations you are actively testing.
+
+Production profile guidance:
+- Set `APP_ENV=production` and provide all required integration values through secure deployment configuration.
+
+### API Error Baseline
+
+Route exceptions are normalized to a consistent JSON shape:
+
+```json
+{
+    "success": false,
+    "error": {
+        "code": "ERROR_CODE",
+        "message": "Human-readable message"
+    }
+}
+```
+
+Missing required environment variables now return clear request-time errors instead of raw stack traces.
+
+### Structured Logging and Correlation IDs
+
+API routes emit structured JSON logs with these standard fields:
+- `timestamp`
+- `level`
+- `message`
+- `context` (including `source` and `correlationId`)
+
+Correlation behavior:
+- If request header `x-correlation-id` is present, the same value is reused.
+- If absent, a UUID is generated.
+- The resolved value is returned in response header `x-correlation-id`.
+
+This enables request lifecycle tracing across `api.request.received`, `api.request.completed`, and failure logs.
+
 PropelIQ-Copilot requires initial configuration to integrate with your project and enable AI-powered workflow automation. This setup process configures the framework files, API credentials, and MCP server integrations necessary for full functionality.
 
 ### Prerequisites

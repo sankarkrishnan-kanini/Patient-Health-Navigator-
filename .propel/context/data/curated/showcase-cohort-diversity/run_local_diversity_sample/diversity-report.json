@@ -1,0 +1,55 @@
+{
+  "runId": "run_local_diversity_sample",
+  "cohortRunId": "run_local_showcase_sample",
+  "cohortOutputDirectory": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-cohort-diversity\\run_local_diversity_sample",
+  "totalProfiles": 6,
+  "requiredCategories": [
+    "chronic-care",
+    "preventive-care"
+  ],
+  "categoryDistribution": {
+    "chronic-care": 0,
+    "preventive-care": 0,
+    "symptom-oriented": 0,
+    "general": 6
+  },
+  "categoryShare": {
+    "chronic-care": 0,
+    "preventive-care": 0,
+    "symptom-oriented": 0,
+    "general": 1
+  },
+  "maxCategoryShare": 0.6,
+  "violations": [
+    {
+      "code": "MISSING_REQUIRED_CATEGORY",
+      "message": "Required clinical category 'chronic-care' is not represented in the cohort.",
+      "details": {
+        "category": "chronic-care"
+      }
+    },
+    {
+      "code": "MISSING_REQUIRED_CATEGORY",
+      "message": "Required clinical category 'preventive-care' is not represented in the cohort.",
+      "details": {
+        "category": "preventive-care"
+      }
+    },
+    {
+      "code": "CATEGORY_DOMINANCE",
+      "message": "Category 'general' dominates cohort with share 100.0%.",
+      "details": {
+        "category": "general",
+        "share": 1,
+        "maxCategoryShare": 0.6
+      }
+    }
+  ],
+  "isCompliant": false,
+  "finalized": false,
+  "taggedProfilesPath": ".propel\\context\\data\\curated\\showcase-cohort-diversity\\run_local_diversity_sample\\tagged-cohort-profiles.json",
+  "diversityReportPath": ".propel\\context\\data\\curated\\showcase-cohort-diversity\\run_local_diversity_sample\\diversity-report.json",
+  "finalizedProfilesPath": ".propel\\context\\data\\curated\\showcase-cohort-diversity\\run_local_diversity_sample\\finalized-cohort-profiles.json",
+  "completedAt": "2026-07-29T10:28:42.242Z"
+}

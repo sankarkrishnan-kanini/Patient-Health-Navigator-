@@ -1,0 +1,57 @@
+{
+  "runId": "run_local_dedup_sample",
+  "inputPath": "tests/fixtures/fhir-batch/bundle-duplicates.json",
+  "stagedDirectory": ".propel\\context\\data\\staging\\raw-fhir\\run_local_dedup_sample",
+  "quarantineDirectory": ".propel\\context\\data\\quarantine\\raw-fhir\\run_local_dedup_sample",
+  "scannedFiles": 1,
+  "stagedResources": 3,
+  "failedFiles": 0,
+  "resourceCounts": {
+    "Patient": {
+      "success": 1,
+      "failure": 0
+    },
+    "Condition": {
+      "success": 1,
+      "failure": 0
+    },
+    "MedicationRequest": {
+      "success": 1,
+      "failure": 0
+    },
+    "CarePlan": {
+      "success": 0,
+      "failure": 0
+    },
+    "Encounter": {
+      "success": 0,
+      "failure": 0
+    },
+    "Observation": {
+      "success": 0,
+      "failure": 0
+    }
+  },
+  "failures": [],
+  "duplicateEvents": [
+    {
+      "runId": "run_local_dedup_sample",
+      "resourceType": "Condition",
+      "resourceId": "condition-dup-001",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-duplicates.json",
+      "reason": "Duplicate resource detected at ingestion boundary.",
+      "detectedAt": "2026-07-29T10:07:09.358Z"
+    },
+    {
+      "runId": "run_local_dedup_sample",
+      "resourceType": "MedicationRequest",
+      "resourceId": "med-dup-001",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-duplicates.json",
+      "reason": "Duplicate resource detected at ingestion boundary.",
+      "detectedAt": "2026-07-29T10:07:09.366Z"
+    }
+  ],
+  "duplicateEventCount": 2,
+  "duplicateEventsPath": ".propel\\context\\data\\staging\\raw-fhir\\run_local_dedup_sample\\duplicate-events.ndjson",
+  "completedAt": "2026-07-29T10:07:09.371Z"
+}

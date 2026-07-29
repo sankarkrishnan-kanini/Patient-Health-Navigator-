@@ -1,0 +1,23 @@
+{
+  "schemaVersion": "v1.0",
+  "profileId": "patient-400",
+  "patientId": "patient-400",
+  "sourceRunId": "run_showcase_diverse",
+  "profileVersion": "v-cohort",
+  "generatedAt": "2026-07-29T00:00:00.000Z",
+  "counts": {
+    "activeConditions": 1,
+    "activeMedications": 0,
+    "careTasks": 0,
+    "upcomingAppointments": 0,
+    "observations": 0,
+    "sdohFlags": 0
+  },
+  "highlights": {
+    "topConditions": ["Condition A"],
+    "topMedications": [],
+    "nextAppointment": null,
+    "keyObservations": [],
+    "sdohFlags": []
+  }
+}

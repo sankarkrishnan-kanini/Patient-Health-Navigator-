@@ -1,0 +1,37 @@
+{
+  "runId": "run_local_validation_sample",
+  "inputPath": "tests/fixtures/fhir-batch/bundle-normalization-malformed.json",
+  "stagedDirectory": ".propel\\context\\data\\staging\\raw-fhir\\run_local_validation_sample",
+  "quarantineDirectory": ".propel\\context\\data\\quarantine\\raw-fhir\\run_local_validation_sample",
+  "scannedFiles": 1,
+  "stagedResources": 9,
+  "failedFiles": 0,
+  "resourceCounts": {
+    "Patient": {
+      "success": 1,
+      "failure": 0
+    },
+    "Condition": {
+      "success": 2,
+      "failure": 0
+    },
+    "MedicationRequest": {
+      "success": 2,
+      "failure": 0
+    },
+    "CarePlan": {
+      "success": 1,
+      "failure": 0
+    },
+    "Encounter": {
+      "success": 1,
+      "failure": 0
+    },
+    "Observation": {
+      "success": 2,
+      "failure": 0
+    }
+  },
+  "failures": [],
+  "completedAt": "2026-07-29T09:57:18.857Z"
+}

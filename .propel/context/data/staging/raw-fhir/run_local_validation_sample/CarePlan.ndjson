@@ -1,0 +1,1 @@
+{"runId":"run_local_validation_sample","sourceFile":"tests/fixtures/fhir-batch/bundle-normalization-malformed.json","resourceType":"CarePlan","resourceId":"careplan-invalid-003","ingestedAt":"2026-07-29T09:57:18.845Z","payload":{"resourceType":"CarePlan","id":"careplan-invalid-003","status":"active"}}

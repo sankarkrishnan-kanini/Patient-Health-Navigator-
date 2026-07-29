@@ -1,0 +1,19 @@
+{
+  "runId": "run_local_validation_sample",
+  "stagedDirectory": ".propel\\context\\data\\staging\\raw-fhir\\run_local_validation_sample",
+  "outputDirectory": ".propel\\context\\data\\normalized\\patient-context\\run_local_validation_sample",
+  "patientCount": 1,
+  "outputFiles": [
+    ".propel\\context\\data\\normalized\\patient-context\\run_local_validation_sample\\patients\\patient-003.json"
+  ],
+  "profileVersion": "v-validate",
+  "generatedAt": "2026-07-29T09:59:03.812Z",
+  "validationReportPath": ".propel\\context\\data\\normalized\\patient-context\\run_local_validation_sample\\validation-errors.json",
+  "validationFailureCount": 4,
+  "validationFailuresByCategory": {
+    "activeConditions": 1,
+    "activeMedications": 1,
+    "careTasks": 1,
+    "observations": 1
+  }
+}

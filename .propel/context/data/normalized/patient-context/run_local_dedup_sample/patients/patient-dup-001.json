@@ -1,0 +1,28 @@
+{
+  "patientId": "patient-dup-001",
+  "profileVersion": "v-dedup",
+  "sourceRunId": "run_local_dedup_sample",
+  "generatedAt": "2026-07-29T10:09:24.316Z",
+  "activeConditions": [
+    {
+      "conditionId": "condition-dup-001",
+      "codeText": "Asthma",
+      "clinicalStatus": "active",
+      "onsetDate": null
+    }
+  ],
+  "activeMedications": [
+    {
+      "medicationId": "med-dup-001",
+      "name": "Albuterol",
+      "doseText": "unspecified",
+      "scheduleText": "unknown",
+      "status": "active",
+      "authoredOn": null
+    }
+  ],
+  "careTasks": [],
+  "upcomingAppointments": [],
+  "observations": [],
+  "sdohFlags": []
+}

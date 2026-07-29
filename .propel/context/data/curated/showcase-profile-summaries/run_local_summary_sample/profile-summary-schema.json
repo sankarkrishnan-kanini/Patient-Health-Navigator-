@@ -1,0 +1,22 @@
+{
+  "version": "v1.0",
+  "requiredFields": [
+    "schemaVersion",
+    "profileId",
+    "patientId",
+    "sourceRunId",
+    "profileVersion",
+    "generatedAt",
+    "counts",
+    "highlights"
+  ],
+  "highlights": {
+    "requiredFields": [
+      "topConditions",
+      "topMedications",
+      "nextAppointment",
+      "keyObservations",
+      "sdohFlags"
+    ]
+  }
+}

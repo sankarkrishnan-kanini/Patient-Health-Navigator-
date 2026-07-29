@@ -1,0 +1,14 @@
+{
+  "runId": "run_local_summary_sample",
+  "completenessRunId": "run_local_completeness_sample",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-profile-summaries\\run_local_summary_sample",
+  "schemaVersion": "v1.0",
+  "selectedProfiles": 6,
+  "generatedSummaries": 6,
+  "validationFailures": 0,
+  "summariesPath": ".propel\\context\\data\\curated\\showcase-profile-summaries\\run_local_summary_sample\\profile-summaries.json",
+  "failuresPath": ".propel\\context\\data\\curated\\showcase-profile-summaries\\run_local_summary_sample\\summary-validation-failures.json",
+  "schemaPath": ".propel\\context\\data\\curated\\showcase-profile-summaries\\run_local_summary_sample\\profile-summary-schema.json",
+  "reportPath": ".propel\\context\\data\\curated\\showcase-profile-summaries\\run_local_summary_sample\\summary-export-report.json",
+  "completedAt": "2026-07-29T10:44:51.536Z"
+}

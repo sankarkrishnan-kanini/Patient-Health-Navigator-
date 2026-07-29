@@ -1,0 +1,85 @@
+{
+  "runId": "run_local_validation_sample",
+  "generatedAt": "2026-07-29T09:59:03.812Z",
+  "totalFailures": 4,
+  "failuresByCategory": {
+    "activeConditions": 1,
+    "activeMedications": 1,
+    "careTasks": 1,
+    "observations": 1
+  },
+  "failuresByResourceType": {
+    "Patient": 0,
+    "Condition": 1,
+    "MedicationRequest": 1,
+    "CarePlan": 1,
+    "Encounter": 0,
+    "Observation": 1
+  },
+  "failures": [
+    {
+      "runId": "run_local_validation_sample",
+      "patientId": "patient-003",
+      "resourceType": "Condition",
+      "resourceId": "condition-invalid-003",
+      "category": "activeConditions",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-normalization-malformed.json",
+      "issues": [
+        {
+          "field": "activeConditions[].codeText",
+          "message": "Condition code text is required.",
+          "severity": "error"
+        }
+      ],
+      "recordedAt": "2026-07-29T09:59:03.839Z"
+    },
+    {
+      "runId": "run_local_validation_sample",
+      "patientId": "patient-003",
+      "resourceType": "MedicationRequest",
+      "resourceId": "med-invalid-003",
+      "category": "activeMedications",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-normalization-malformed.json",
+      "issues": [
+        {
+          "field": "activeMedications[].name",
+          "message": "Medication name is required.",
+          "severity": "error"
+        }
+      ],
+      "recordedAt": "2026-07-29T09:59:03.839Z"
+    },
+    {
+      "runId": "run_local_validation_sample",
+      "patientId": null,
+      "resourceType": "CarePlan",
+      "resourceId": "careplan-invalid-003",
+      "category": "careTasks",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-normalization-malformed.json",
+      "issues": [
+        {
+          "field": "subject.reference",
+          "message": "Patient reference is required for care task normalization.",
+          "severity": "error"
+        }
+      ],
+      "recordedAt": "2026-07-29T09:59:03.839Z"
+    },
+    {
+      "runId": "run_local_validation_sample",
+      "patientId": null,
+      "resourceType": "Observation",
+      "resourceId": "obs-invalid-003",
+      "category": "observations",
+      "sourceFile": "tests/fixtures/fhir-batch/bundle-normalization-malformed.json",
+      "issues": [
+        {
+          "field": "subject.reference",
+          "message": "Patient reference is required for observation normalization.",
+          "severity": "error"
+        }
+      ],
+      "recordedAt": "2026-07-29T09:59:03.840Z"
+    }
+  ]
+}

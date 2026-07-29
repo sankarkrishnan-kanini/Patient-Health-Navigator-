@@ -1,0 +1,1 @@
+{"runId":"run_local_lineage_sample","sourceFile":"tests/fixtures/fhir-batch/bundle-normalization.json","resourceType":"Patient","resourceId":"patient-002","ingestedAt":"2026-07-29T10:18:03.353Z","payload":{"resourceType":"Patient","id":"patient-002","gender":"male"}}

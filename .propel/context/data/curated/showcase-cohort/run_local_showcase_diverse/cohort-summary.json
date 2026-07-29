@@ -1,0 +1,59 @@
+{
+  "runId": "run_local_showcase_diverse",
+  "sourceRunId": "run_showcase_diverse",
+  "sourceDirectory": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_diverse",
+  "minProfiles": 5,
+  "maxProfiles": 10,
+  "scannedFiles": 6,
+  "selectedPatientCount": 6,
+  "selectedProfiles": [
+    {
+      "profileId": "patient-400",
+      "patientId": "patient-400",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-400.json"
+    },
+    {
+      "profileId": "patient-401",
+      "patientId": "patient-401",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-401.json"
+    },
+    {
+      "profileId": "patient-402",
+      "patientId": "patient-402",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-402.json"
+    },
+    {
+      "profileId": "patient-403",
+      "patientId": "patient-403",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-403.json"
+    },
+    {
+      "profileId": "patient-404",
+      "patientId": "patient-404",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-404.json"
+    },
+    {
+      "profileId": "patient-405",
+      "patientId": "patient-405",
+      "sourceRunId": "run_showcase_diverse",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_diverse\\patients\\patient-405.json"
+    }
+  ],
+  "failedRecords": [],
+  "selectedProfilesPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_diverse\\cohort-profiles.json",
+  "selectedProfileIdsPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_diverse\\cohort-profile-ids.txt",
+  "failuresPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_diverse\\cohort-failures.ndjson",
+  "completedAt": "2026-07-29T10:37:03.476Z"
+}

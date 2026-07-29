@@ -1,0 +1,28 @@
+{
+  "runId": "run_local_completeness_fail",
+  "cohortRunId": "run_local_showcase_sample",
+  "cohortOutputDirectory": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-cohort-completeness\\run_local_completeness_fail",
+  "checklist": {
+    "version": "v1.1",
+    "fields": [
+      "patientId",
+      "profileVersion",
+      "sourceRunId",
+      "activeConditions",
+      "activeMedications",
+      "careTasks",
+      "upcomingAppointments",
+      "observations",
+      "sdohFlags"
+    ]
+  },
+  "scannedProfiles": 6,
+  "passedProfiles": 0,
+  "rejectedProfiles": 6,
+  "passRate": 0,
+  "completeProfilesPath": ".propel\\context\\data\\curated\\showcase-cohort-completeness\\run_local_completeness_fail\\complete-cohort-profiles.json",
+  "failuresPath": ".propel\\context\\data\\curated\\showcase-cohort-completeness\\run_local_completeness_fail\\completeness-failures.json",
+  "reportPath": ".propel\\context\\data\\curated\\showcase-cohort-completeness\\run_local_completeness_fail\\completeness-report.json",
+  "completedAt": "2026-07-29T10:39:00.743Z"
+}

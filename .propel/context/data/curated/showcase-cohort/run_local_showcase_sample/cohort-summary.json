@@ -1,0 +1,66 @@
+{
+  "runId": "run_local_showcase_sample",
+  "sourceRunId": "run_showcase_seed",
+  "sourceDirectory": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample",
+  "minProfiles": 5,
+  "maxProfiles": 10,
+  "scannedFiles": 7,
+  "selectedPatientCount": 6,
+  "selectedProfiles": [
+    {
+      "profileId": "patient-100",
+      "patientId": "patient-100",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-100.json"
+    },
+    {
+      "profileId": "patient-101",
+      "patientId": "patient-101",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-101.json"
+    },
+    {
+      "profileId": "patient-102",
+      "patientId": "patient-102",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-102.json"
+    },
+    {
+      "profileId": "patient-103",
+      "patientId": "patient-103",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-103.json"
+    },
+    {
+      "profileId": "patient-104",
+      "patientId": "patient-104",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-104.json"
+    },
+    {
+      "profileId": "patient-105",
+      "patientId": "patient-105",
+      "sourceRunId": "run_showcase_seed",
+      "profileVersion": "v-cohort",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-105.json"
+    }
+  ],
+  "failedRecords": [
+    {
+      "runId": "run_local_showcase_sample",
+      "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-bad.json",
+      "reason": "Expected property name or '}' in JSON at position 2 (line 1 column 3)",
+      "recordedAt": "2026-07-29T10:28:38.272Z"
+    }
+  ],
+  "selectedProfilesPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample\\cohort-profiles.json",
+  "selectedProfileIdsPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample\\cohort-profile-ids.txt",
+  "failuresPath": ".propel\\context\\data\\curated\\showcase-cohort\\run_local_showcase_sample\\cohort-failures.ndjson",
+  "completedAt": "2026-07-29T10:28:38.299Z"
+}

@@ -1,0 +1,44 @@
+[
+  {
+    "profileId": "patient-100",
+    "patientId": "patient-100",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-100.json"
+  },
+  {
+    "profileId": "patient-101",
+    "patientId": "patient-101",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-101.json"
+  },
+  {
+    "profileId": "patient-102",
+    "patientId": "patient-102",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-102.json"
+  },
+  {
+    "profileId": "patient-103",
+    "patientId": "patient-103",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-103.json"
+  },
+  {
+    "profileId": "patient-104",
+    "patientId": "patient-104",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-104.json"
+  },
+  {
+    "profileId": "patient-105",
+    "patientId": "patient-105",
+    "sourceRunId": "run_showcase_seed",
+    "profileVersion": "v-cohort",
+    "sourceFile": "tests\\fixtures\\showcase-cohort\\run_showcase_seed\\patients\\patient-105.json"
+  }
+]

@@ -1,0 +1,16 @@
+{
+  "runId": "run_refresh_ids_sample_1",
+  "completenessRunId": "run_local_completeness_sample",
+  "outputDirectory": ".propel\\context\\data\\curated\\showcase-stable-ids\\run_refresh_ids_sample_1",
+  "registryPath": ".propel\\context\\data\\curated\\showcase-stable-ids\\stable-id-registry.json",
+  "registryBackupPath": null,
+  "mappingReportPath": ".propel\\context\\data\\curated\\showcase-stable-ids\\run_refresh_ids_sample_1\\stable-id-mapping-report.json",
+  "lookupIndexPath": ".propel\\context\\data\\curated\\showcase-stable-ids\\run_refresh_ids_sample_1\\stable-id-lookup.json",
+  "runbookPath": ".propel\\context\\data\\curated\\showcase-stable-ids\\run_refresh_ids_sample_1\\stable-id-refresh-runbook.md",
+  "totalProfiles": 6,
+  "addedCount": 6,
+  "removedCount": 0,
+  "updatedCount": 0,
+  "unchangedCount": 0,
+  "completedAt": "2026-07-29T10:52:19.169Z"
+}
