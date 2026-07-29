@@ -1,7 +1,0 @@
-{
-  "resourceType": "AllergyIntolerance",
-  "id": "allergy-001",
-  "patient": {
-    "reference": "Patient/patient-001"
-  }
-}

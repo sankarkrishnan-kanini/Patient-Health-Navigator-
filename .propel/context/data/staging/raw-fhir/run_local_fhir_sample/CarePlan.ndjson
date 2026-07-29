@@ -1,1 +1,0 @@
-{"runId":"run_local_fhir_sample","sourceFile":"tests\\fixtures\\fhir-batch\\bundle-all.json","resourceType":"CarePlan","resourceId":"careplan-001","ingestedAt":"2026-07-29T09:21:20.556Z","payload":{"resourceType":"CarePlan","id":"careplan-001","subject":{"reference":"Patient/patient-001"}}}

@@ -4,17 +4,38 @@ node_modules/
 # Next.js build artifacts
 .next/
 out/
+dist/
+build/
+*.tsbuildinfo
 
 # Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+*.log
 
 # Environment files
 .env.local
 .env.*.local
+.env
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# Test and QA outputs
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Tool caches
+.turbo/
+.cache/
+
+# Local deployment output
+.vercel/
+
+# Generated pipeline runtime artifacts
+.propel/context/data/

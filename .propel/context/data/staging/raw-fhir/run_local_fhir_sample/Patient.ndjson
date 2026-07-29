@@ -1,1 +1,0 @@
-{"runId":"run_local_fhir_sample","sourceFile":"tests\\fixtures\\fhir-batch\\bundle-all.json","resourceType":"Patient","resourceId":"patient-001","ingestedAt":"2026-07-29T09:21:20.550Z","payload":{"resourceType":"Patient","id":"patient-001","gender":"female"}}

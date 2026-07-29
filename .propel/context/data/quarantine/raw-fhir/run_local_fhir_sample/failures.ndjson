@@ -1,2 +1,0 @@
-{"runId":"run_local_fhir_sample","sourceFile":"tests\\fixtures\\fhir-batch\\malformed.json","reason":"Invalid JSON content."}
-{"runId":"run_local_fhir_sample","sourceFile":"tests\\fixtures\\fhir-batch\\unsupported-resource.json","reason":"Unsupported resource type: AllergyIntolerance"}

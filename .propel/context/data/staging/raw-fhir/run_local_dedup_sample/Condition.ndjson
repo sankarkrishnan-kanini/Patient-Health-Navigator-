@@ -1,1 +1,0 @@
-{"runId":"run_local_dedup_sample","sourceFile":"tests/fixtures/fhir-batch/bundle-duplicates.json","resourceType":"Condition","resourceId":"condition-dup-001","ingestedAt":"2026-07-29T10:07:09.356Z","payload":{"resourceType":"Condition","id":"condition-dup-001","subject":{"reference":"Patient/patient-dup-001"},"clinicalStatus":{"text":"active"},"code":{"text":"Asthma"}}}
