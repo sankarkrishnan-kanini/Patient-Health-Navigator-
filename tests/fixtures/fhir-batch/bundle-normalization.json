@@ -1,0 +1,174 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-002",
+        "gender": "male"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-active-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        },
+        "code": {
+          "text": "Type 2 diabetes"
+        },
+        "onsetDateTime": "2025-01-10"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-inactive-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "clinicalStatus": {
+          "text": "inactive"
+        },
+        "code": {
+          "text": "Resolved seasonal allergy"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-active-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Metformin"
+        },
+        "authoredOn": "2026-01-01",
+        "dosageInstruction": [
+          {
+            "text": "500 mg twice daily",
+            "timing": {
+              "code": {
+                "text": "BID"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-stopped-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "status": "stopped",
+        "medicationCodeableConcept": {
+          "text": "Old therapy"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "careplan-002",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "status": "active",
+        "activity": [
+          {
+            "detail": {
+              "description": "Walk 30 minutes daily",
+              "status": "scheduled",
+              "scheduledString": "2026-08-01"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-future-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "status": "planned",
+        "type": [
+          {
+            "text": "Primary care follow-up"
+          }
+        ],
+        "period": {
+          "start": "2099-02-01T09:00:00Z",
+          "end": "2099-02-01T09:30:00Z"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-past-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "status": "finished",
+        "period": {
+          "start": "2020-01-01T09:00:00Z",
+          "end": "2020-01-01T09:30:00Z"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-social-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "social-history",
+                "display": "Social History"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "text": "Housing stability"
+        },
+        "valueString": "At risk",
+        "issued": "2026-06-01T00:00:00Z"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-clinical-001",
+        "subject": {
+          "reference": "Patient/patient-002"
+        },
+        "code": {
+          "text": "Systolic blood pressure"
+        },
+        "valueQuantity": {
+          "value": 128,
+          "unit": "mmHg"
+        },
+        "issued": "2026-07-01T00:00:00Z"
+      }
+    }
+  ]
+}

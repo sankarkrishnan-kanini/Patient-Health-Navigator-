@@ -1,0 +1,11 @@
+{
+  "patientId": "patient-403",
+  "profileVersion": "v-cohort",
+  "sourceRunId": "run_showcase_diverse",
+  "activeConditions": [],
+  "activeMedications": [],
+  "careTasks": [{"carePlanId": "t2"}],
+  "upcomingAppointments": [{"encounterId": "e1"}],
+  "observations": [],
+  "sdohFlags": []
+}

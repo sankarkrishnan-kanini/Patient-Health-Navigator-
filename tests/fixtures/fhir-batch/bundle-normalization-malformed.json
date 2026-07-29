@@ -1,0 +1,118 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "Patient",
+        "id": "patient-003"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-valid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        },
+        "code": {
+          "text": "Hypertension"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Condition",
+        "id": "condition-invalid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "clinicalStatus": {
+          "text": "active"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-valid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "status": "active",
+        "medicationCodeableConcept": {
+          "text": "Lisinopril"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicationRequest",
+        "id": "med-invalid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "status": "active"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "CarePlan",
+        "id": "careplan-invalid-003",
+        "status": "active"
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Encounter",
+        "id": "encounter-valid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "status": "planned",
+        "period": {
+          "start": "2099-05-01T10:00:00Z",
+          "end": "2099-05-01T10:30:00Z"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-invalid-003",
+        "code": {
+          "text": "Body weight"
+        },
+        "valueQuantity": {
+          "value": 72,
+          "unit": "kg"
+        }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "Observation",
+        "id": "obs-sdoh-valid-003",
+        "subject": {
+          "reference": "Patient/patient-003"
+        },
+        "category": [
+          {
+            "coding": [
+              {
+                "code": "social-history"
+              }
+            ]
+          }
+        ],
+        "code": {
+          "text": "Food insecurity"
+        },
+        "valueString": "Sometimes true"
+      }
+    }
+  ]
+}
