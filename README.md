@@ -114,7 +114,9 @@ Agentic orchestrators automate multi-step workflows by sequentially invoking ind
 
 | Orchestrator | Description | Handoff | Usage Example |
 |--------------|-------------|---------|---------------|
-| `discovery-agent` | Orchestrates technical discovery: `create-spec` → `design-architecture` → `design-model` → `create-figma-spec` [if UI] → `create-test-plan` | `/backlog-agent` | `/discovery-agent Project_Scope.md` |
+| `concept-validation` | Gate-enforced: `brainstorm-idea` → select candidate → `build-prototype` → approve (auto-approved on PASS unless policy-mandated) | `/technical-discovery` | `/concept-validation Project_Scope.md` |
+| `discovery-lite` *(formerly `discovery-mini`, now gated)* | Gate-enforced lightweight on-ramp: `brainstorm-idea` → approve | `/technical-discovery` | `/discovery-lite Project_Scope.md` |
+| `technical-discovery` | Gate-enforced (create-spec + design-architecture policy-mandated; others gate via manifest default): `create-spec` → `design-architecture` → `design-model` [optional, `--design-model=false` to skip] → `create-figma-spec` [if UI] → `generate-wireframe` [if UI] | `/backlog-agent` | `/technical-discovery Project_Scope.md` |
 | `backlog-agent` | Transforms specs into backlog: `create-epics` → `generate-wireframe` [optional] → `create-user-stories` | `/build-feature-agent` | `/backlog-agent --generate-wireframes` |
 | `build-feature-agent` | Orchestrates user story implementation: `plan-development-tasks` → implement → analyze → UX review [if UI] → code review → unit tests | /devops-agent | `/build-feature-agent us_001` |
 | `bug-fixing-agent` | Orchestrates bug resolution: `plan-bug-resolution` → identify test impact → implement → analyze → UX review [if UI] → code review → update tests [if needed] → run test suite | PR/Deploy | `/bug-fixing-agent bug_042` |
