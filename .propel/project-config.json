@@ -28,7 +28,8 @@
             "contentType": "pdf",
             "mcpType": "local",
             "references": ["codeanalysis", "prototype", "brainstorm"],
-            "workflow": "/create-spec"
+            "workflow": "/create-spec",
+            "qualityThreshold": 85
         },
         "ds_spec": {
             "propelFileName": "ds-spec.md",
@@ -55,7 +56,8 @@
             "contentType": "docx",
             "mcpType": "local",
             "references": ["spec", "codeanalysis"],
-            "workflow": "/design-architecture"
+            "workflow": "/design-architecture",
+            "qualityThreshold": 85
         },
         "model": {
             "propelFileName": "model.md",
@@ -68,7 +70,8 @@
             "contentType": "pdf",
             "mcpType": "local",
             "references": ["spec", "design", "codeanalysis"],
-            "workflow": "/design-model"
+            "workflow": "/design-model",
+            "qualityThreshold": 90
         },
         "task": {
             "propelFileName": "task_<seq>_<name>.md",
@@ -95,7 +98,8 @@
             "contentType": "md",
             "mcpType": "local",
             "references": ["spec", "design"],
-            "workflow": "/create-figma-spec"
+            "workflow": "/create-figma-spec",
+            "qualityThreshold": 80
         },
         "designsystem": {
             "propelFileName": "designsystem.md",
@@ -173,6 +177,7 @@
             "mcpType": "local",
             "references": ["spec", "design", "model", "codeanalysis", "figma_spec"],
             "workflow": "/create-epics",
+            "qualityThreshold": 80,
             "_note": "Epic IDs are EP-<seqnum> (e.g., EP-001), with reserved foundational tokens EP-TECH (technical bootstrap) and EP-DATA (data foundation)."
         },
         "user_story": {
@@ -187,6 +192,7 @@
             "mcpType": "local",
             "references": ["epics", "spec", "design", "model", "figma_spec"],
             "workflow": "/create-user-stories",
+            "qualityThreshold": 80,
             "_note": "Written to nested path <epic_id>/us_<id>/us_<id>.md — composed by the prompt from propelDirPath + EPIC_ID + US_ID. <id> is zero-padded 3-digit."
         },
         "wireframe": {
@@ -208,6 +214,7 @@
             "mcpType": "local",
             "references": ["figma_spec", "designsystem", "spec"],
             "workflow": "/generate-wireframe",
+            "qualityThreshold": 75,
             "_note": "Multi-file artifact. propelFileNames documents the markdown outputs (one per template key). Per-screen HTML wireframes also written as wireframe-SCR-XXX-<name>.html (composed by prompt). design_tokens_applied is conditional on --fidelity=high. propelFileNames is documentation today; resolver does not yet read this field."
         },
         "bug_resolution": {

@@ -19,7 +19,8 @@ of the old declarative-gate pattern -- not migrated to the new tools.*
 ```
 
 Build `pathContext = {"brainstorm": {"path": ..., "content_type": ..., "mcp_type": ...}}`.
-Read `.propel/gate-policy.json` and pass its raw content as `gatePolicyJson`.
+Read `.propel/gate-policy.json` and pass its raw content as `gatePolicyJson`
+on `StartWorkflowRun` below -- `SubmitGateDecision` doesn't need it.
 
 ## Step 1 — start the run
 
@@ -35,17 +36,18 @@ Report the `gatePlan`. S1's gate resolves to `always` via the manifest default
 it unless you add a matching rule to `gate-policy.json`. Decide deliberately
 whether that's acceptable for this workflow before relying on the default.
 
-## Step 2 — execute S1 (brainstorm-idea)
+## Step 2 — execute S1 inline
 
-**Session isolation is host-specific -- follow your shim**:
-`.claude/commands/discovery-lite.md`, `.github/prompts/discovery-lite.prompt.md`,
-or `.windsurf/workflows/discovery-lite.md`. This is a single-step workflow so
-the isolation need is smaller than the other two orchestrators, but the
-mechanism (if any) still shouldn't be prescribed in this shared file.
+1. `GetNextRunStep(project, runId)` → fetch directive
+2. Execute brainstorm work inline (ask clarifications via AskUserQuestion as needed)
+3. `CompleteRunStep(project, runId, stepId="S1", artifact=<brainstorm>)`
 
-`status: "gate_pending"` → STOP, render via `AskUserQuestion` per
-`probe-user`'s contract, then `SubmitGateDecision` with the user's decision
-(feedback required on reject).
+## Step 3 — S1 gate decision
+
+If `status: "gate_pending"`, render artifact via `AskUserQuestion` (probe-user contract).
+- Approve: `SubmitGateDecision(approve)` → handoff
+- Reject: `SubmitGateDecision(reject, feedback=<reason>)` → loop to Step 2
+- Abort: `SubmitGateDecision(abort)` → exit
 
 ## Handoff
 

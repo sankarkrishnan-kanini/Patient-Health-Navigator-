@@ -17,7 +17,9 @@ approval, server-enforced, not just client convention.
 
 Build `pathContext` from all five results (same `{path, content_type, mcp_type}`
 shape as `concept-validation.md`). Read `.propel/gate-policy.json` and pass its
-raw content as `gatePolicyJson` on every call below.
+raw content as `gatePolicyJson` on `StartWorkflowRun` in Step 1 only --
+`CompleteRunStep` and `SubmitGateDecision` don't need it. Gate resolution
+happens once, at run start, and gets frozen into the run.
 
 **Note the key is `design`, not `architecture`** -- the produced artifact for
 S2 (design-architecture) resolves to the `design` key in `project-config.json`.
@@ -44,21 +46,18 @@ front, not just "everything is mandated" -- a `--approve=none` request will
 be partially honoured here, and discovering that mid-run is worse than
 hearing it in the gate plan summary.
 
-## Steps 2–6 — execute S1 through S5
+## Steps 2–11 — execute S1-S5 inline
 
-Same isolation goal as `concept-validation.md`: keep each step's
-exploration/generation noise out of this session. **The mechanism is
-host-specific and lives in your shim, not here** -- `.claude/commands/technical-discovery.md`
-(Claude Code), `.github/prompts/technical-discovery.prompt.md` (Copilot), or
-`.windsurf/workflows/technical-discovery.md` (Windsurf). Follow your shim's
-instructions before executing each step; do not assume a delegation mechanism
-this file describes for other hosts is available to you.
+For each step (S1-S5):
 
-Between each step, `status: "gate_pending"` means STOP -- render via
-`AskUserQuestion` per `probe-user`'s Rendering Contract (artifact + basis,
-approve / reject / abort). **Rejection requires feedback text** -- the server
-now hard-rejects an empty-feedback `reject` decision, so always collect a
-reason before calling `SubmitGateDecision`.
+1. `GetNextRunStep(project, runId)` → fetch directive (includes previous step context)
+2. Execute step work inline (ask clarifications via AskUserQuestion as needed)
+3. `CompleteRunStep(project, runId, stepId="SN", artifact=<result>)`
+
+If `status: "gate_pending"`, render via `AskUserQuestion` (probe-user contract):
+- Approve: `SubmitGateDecision(approve)` → proceed to next step
+- Reject: `SubmitGateDecision(reject, feedback=<reason>)` → loop to step (feedback required)
+- Abort: `SubmitGateDecision(abort)` → exit
 
 ## S3 is conditionally skipped, S4/S5 are not (yet)
 

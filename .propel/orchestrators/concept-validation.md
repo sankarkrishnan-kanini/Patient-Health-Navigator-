@@ -23,7 +23,11 @@ Build `pathContext` from the two results:
 ```
 
 Read `.propel/gate-policy.json` and pass its raw content as `gatePolicyJson`
-on every call below. The server never reads this file itself.
+on `StartWorkflowRun` in Step 1 -- that is the ONLY call that needs it. Gate
+resolution happens once, at run start; the server freezes the result into the
+run and never needs the policy re-supplied afterward. Passing this large JSON
+blob as an inline string argument is already the single riskiest parameter in
+this whole flow -- only require it where it's actually used.
 
 ## Step 1 — start the run
 
@@ -40,65 +44,32 @@ the user before doing any work — if a row carries a `note`, their `--approve=`
 request was clamped by a mandate; say so and give the `reason`. Never let them
 discover a gate by hitting it.
 
-## Step 2 — execute S1 (brainstorm-idea)
+## Step 2 — execute S1 inline
 
-**Session isolation.** Brainstorming explores multiple candidates and can
-generate substantial back-and-forth -- keep it out of this orchestrator's own
-context. **The mechanism is host-specific and lives in your shim, not here**:
-`.claude/commands/concept-validation.md` (Claude Code), `.github/prompts/concept-validation.prompt.md`
-(Copilot), or `.windsurf/workflows/concept-validation.md` (Windsurf) --
-whichever matches your current host. This file is identical across all
-three, and a delegation mechanism only some hosts can actually use shouldn't
-sit in the copy the others read too. Follow your shim's instructions for S1
-before proceeding.
+1. `GetNextRunStep(project, runId)` → fetch directive
+2. Execute brainstorm work inline (generate candidates, ask clarifications as needed)
+3. `CompleteRunStep(project, runId, stepId="S1", envelope={artifacts, candidates, openQuestions})`
 
-Either way, once S1 is complete, the parent receives:
+## Step 3 — S1 gate (selection)
+
+If `status: "gate_pending"`, render via `AskUserQuestion` (probe-user contract).
+Map candidates to options (top 3 + Custom if >3 produced).
 ```
-CompleteRunStep(project, runId, stepId="S1",
-  envelope={"artifacts": [<brainstorm propelFilePath>],
-            "candidates": [{"id": "C-001", "title": "...", "score": 8.4}, ...],
-            "openQuestions": [...]},
-  gatePolicyJson=<from Step 0>)
+SubmitGateDecision(project, runId, stepId="S1", decision="select", selection=[<id>])
 ```
-(the subagent calls this itself and hands back the result; on Windsurf, the
-resumed session calls it directly.)
+Reject loops back to S1.
 
-## Step 3 — gate (selection)
+## Step 4 — execute S2 inline
 
-`status: "gate_pending"` means STOP. Render the returned `gate` payload using
-`AskUserQuestion` per the rendering contract in `.propel/skills/probe-user/SKILL.md`
-(one question, first option recommended, exactly 4 options total, Custom last).
-Map each candidate to an option; if more than 3 candidates were produced,
-present the top 3 by score plus Custom, and mention the rest are available on
-request. Do not present raw JSON.
+1. `GetNextRunStep(project, runId)` → fetch directive (includes S1 context: selected candidate)
+2. Execute prototype build inline
+3. `CompleteRunStep(project, runId, stepId="S2", envelope={artifacts, facts: {eval.verdict}})`
 
-Then:
-```
-SubmitGateDecision(project, runId, stepId="S1", decision="select",
-  selection=[<chosen candidate id>], gatePolicyJson=<from Step 0>)
-```
+## Step 5 — S2 gate (approval)
 
-`reject` loops back to S1 with feedback injected; it does not fail the run.
-
-## Step 4 — execute S2 (build-prototype)
-
-Same isolation rule as Step 2, and the same pointer -- **follow your host's
-shim** for the exact delegation mechanism, this file stays host-agnostic. The
-subagent (or resumed Windsurf session) needs the selected candidate from
-`context.selected` on the S1 result, in addition to `runId`/`project`/`gatePolicyJson`.
-
-Either way, once S2 is complete, the parent receives:
-```
-CompleteRunStep(project, runId, stepId="S2",
-  envelope={"artifacts": [<prototype propelFilePath>], "facts": {"eval.verdict": "<verdict>"}},
-  gatePolicyJson=<from Step 0>)
-```
-
-A `PASS` verdict on this step auto-approves (S2's gate is conditional, not
-mandated) and the run completes without a human pause. Any other verdict, or
-`--approve=` requesting one, raises the gate — go to Step 3's rendering
-approach, but this gate is `user_approval` type: present the artifact and the
-`basis`, offer approve / reject / abort.
+If `status: "gate_pending"`, render artifact via `AskUserQuestion`.
+- `PASS` verdict auto-approves, complete immediately
+- Any other verdict raises gate; user can approve/reject/abort
 
 ## Step 5 — post-approval hook
 
