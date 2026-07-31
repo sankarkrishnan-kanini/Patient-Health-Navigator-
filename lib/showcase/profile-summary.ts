@@ -6,6 +6,8 @@ export type ProfileCondition = {
 export type ProfileMedication = {
   medicationId: string;
   name: string;
+  schedule: string | null;
+  purpose: string | null;
 };
 
 export type ProfileCareTask = {
@@ -42,7 +44,14 @@ const SHOWCASE_PROFILE_SUMMARIES: Record<string, PatientProfileSummary> = {
     profileId: "patient-401",
     patientId: "patient-401",
     activeConditions: [],
-    activeMedications: [{ medicationId: "m1", name: "Medication A" }],
+    activeMedications: [
+      {
+        medicationId: "m1",
+        name: "Medication A",
+        schedule: "Every morning",
+        purpose: "Blood sugar management"
+      }
+    ],
     careTasks: [],
     upcomingVisits: []
   },
@@ -50,7 +59,14 @@ const SHOWCASE_PROFILE_SUMMARIES: Record<string, PatientProfileSummary> = {
     profileId: "patient-402",
     patientId: "patient-402",
     activeConditions: [],
-    activeMedications: [{ medicationId: "m2", name: "Medication B" }],
+    activeMedications: [
+      {
+        medicationId: "m2",
+        name: "Medication B",
+        schedule: "Twice daily with meals",
+        purpose: null
+      }
+    ],
     careTasks: [{ carePlanId: "cp1", description: "Annual wellness follow-up", status: "open" }],
     upcomingVisits: []
   },
@@ -72,7 +88,14 @@ const SHOWCASE_PROFILE_SUMMARIES: Record<string, PatientProfileSummary> = {
     profileId: "patient-404",
     patientId: "patient-404",
     activeConditions: [{ conditionId: "c2", label: "Condition B" }],
-    activeMedications: [{ medicationId: "m3", name: "Medication C" }],
+    activeMedications: [
+      {
+        medicationId: "m3",
+        name: "Medication C",
+        schedule: null,
+        purpose: "Blood pressure support"
+      }
+    ],
     careTasks: [],
     upcomingVisits: [{ encounterId: "encounter-2", status: "scheduled", start: "2099-02-15T09:30:00Z" }]
   },

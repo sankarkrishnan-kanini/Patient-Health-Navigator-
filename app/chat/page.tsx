@@ -16,8 +16,47 @@ import {
   classifyProfileLoadFailure,
   type ProfileLoadFailure
 } from "@/lib/showcase/profile-load-failure";
+import {
+  formatTranscriptTimestamp,
+  parseTranscriptTurns,
+  sortTranscriptTurnsStable,
+  type ChatTranscriptTurn
+} from "@/lib/showcase/chat-transcript";
 
 const CHAT_SESSION_PROFILE_KEY = "chat.selectedProfileId";
+const CHAT_TRANSCRIPT_KEY = "chat.transcript.v1";
+
+type StoredTranscript = {
+  profileId: string;
+  turns: ChatTranscriptTurn[];
+};
+
+function parseStoredTranscript(serialized: string | null): StoredTranscript | null {
+  if (!serialized) {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(serialized) as unknown;
+    if (!parsed || typeof parsed !== "object") {
+      return null;
+    }
+
+    const candidate = parsed as Partial<StoredTranscript>;
+    if (typeof candidate.profileId !== "string" || !Array.isArray(candidate.turns)) {
+      return null;
+    }
+
+    const turns = parseTranscriptTurns(JSON.stringify(candidate.turns));
+
+    return {
+      profileId: candidate.profileId,
+      turns
+    };
+  } catch {
+    return null;
+  }
+}
 
 export default function ChatPage() {
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
@@ -26,16 +65,45 @@ export default function ChatPage() {
   const [loadFailure, setLoadFailure] = useState<ProfileLoadFailure | null>(null);
   const [reloadCounter, setReloadCounter] = useState<number>(0);
   const [draftMessage, setDraftMessage] = useState<string>("");
-  const [queuedMessages, setQueuedMessages] = useState<string[]>([]);
+  const [transcriptTurns, setTranscriptTurns] = useState<ChatTranscriptTurn[]>([]);
+  const [nextTurnSequence, setNextTurnSequence] = useState<number>(0);
 
   useEffect(() => {
     const stored = sessionStorage.getItem(CHAT_SESSION_PROFILE_KEY);
-    if (!stored || !getShowcasePatientById(stored)) {
+    if (stored && getShowcasePatientById(stored)) {
+      setConfirmedProfileId(stored);
+    }
+
+    const storedTranscript = parseStoredTranscript(sessionStorage.getItem(CHAT_TRANSCRIPT_KEY));
+    if (!storedTranscript || !getShowcasePatientById(storedTranscript.profileId)) {
       return;
     }
 
-    setConfirmedProfileId(stored);
+    setTranscriptTurns(storedTranscript.turns);
+    const maxSequence = storedTranscript.turns.reduce(
+      (currentMax, turn) => (turn.sequence > currentMax ? turn.sequence : currentMax),
+      -1
+    );
+    setNextTurnSequence(maxSequence + 1);
   }, []);
+
+  useEffect(() => {
+    if (!confirmedProfileId) {
+      sessionStorage.removeItem(CHAT_TRANSCRIPT_KEY);
+      return;
+    }
+
+    if (transcriptTurns.length === 0) {
+      sessionStorage.removeItem(CHAT_TRANSCRIPT_KEY);
+      return;
+    }
+
+    const serialized = JSON.stringify({
+      profileId: confirmedProfileId,
+      turns: transcriptTurns
+    } satisfies StoredTranscript);
+    sessionStorage.setItem(CHAT_TRANSCRIPT_KEY, serialized);
+  }, [confirmedProfileId, transcriptTurns]);
 
   const selectedProfile = useMemo(() => {
     if (!confirmedProfileId) {
@@ -46,6 +114,12 @@ export default function ChatPage() {
   }, [confirmedProfileId]);
 
   function handleConfirmSelection(profileId: string): void {
+    if (profileId !== confirmedProfileId) {
+      setTranscriptTurns([]);
+      setNextTurnSequence(0);
+      sessionStorage.removeItem(CHAT_TRANSCRIPT_KEY);
+    }
+
     setConfirmedProfileId(profileId);
     sessionStorage.setItem(CHAT_SESSION_PROFILE_KEY, profileId);
   }
@@ -151,8 +225,25 @@ export default function ChatPage() {
       return;
     }
 
-    const profileLabel = selectedProfile?.label ?? "Selected profile";
-    setQueuedMessages((current) => [...current, `${profileLabel}: ${nextMessage}`]);
+    const baseTimestamp = new Date();
+    const userTurn: ChatTranscriptTurn = {
+      id: `turn-${nextTurnSequence.toString()}`,
+      sequence: nextTurnSequence,
+      role: "user",
+      message: nextMessage,
+      createdAt: baseTimestamp.toISOString()
+    };
+    const assistantTurn: ChatTranscriptTurn = {
+      id: `turn-${(nextTurnSequence + 1).toString()}`,
+      sequence: nextTurnSequence + 1,
+      role: "assistant",
+      message:
+        "Message captured. I will ground follow-up guidance using your selected patient profile and session context.",
+      createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
+    };
+
+    setTranscriptTurns((current) => sortTranscriptTurnsStable([...current, userTurn, assistantTurn]));
+    setNextTurnSequence((current) => current + 2);
     setDraftMessage("");
   }
 
@@ -212,16 +303,32 @@ export default function ChatPage() {
             </div>
           </form>
 
-          {queuedMessages.length > 0 && (
-            <section className="chat-queued">
-              <h3>Queued Messages</h3>
-              <ul>
-                {queuedMessages.map((message, index) => (
-                  <li key={`${message}-${index.toString()}`}>{message}</li>
+          <section className="chat-transcript" aria-labelledby="chat-transcript-heading">
+            <h3 id="chat-transcript-heading">Conversation Transcript</h3>
+            <p className="chat-transcript-caption">
+              Turns are grouped by speaker and include timestamps for readability.
+            </p>
+
+            {transcriptTurns.length === 0 ? (
+              <p className="chat-transcript-empty">No transcript turns yet. Send a message to begin.</p>
+            ) : (
+              <ol className="chat-transcript-list" aria-live="polite" aria-relevant="additions text">
+                {transcriptTurns.map((turn) => (
+                  <li key={turn.id} className={`chat-turn chat-turn-${turn.role}`}>
+                    <article aria-label={turn.role === "user" ? "User turn" : "Assistant turn"}>
+                      <header className="chat-turn-header">
+                        <span className="chat-turn-role">{turn.role === "user" ? "You" : "Assistant"}</span>
+                        <time className="chat-turn-time" dateTime={turn.createdAt}>
+                          {formatTranscriptTimestamp(turn.createdAt)}
+                        </time>
+                      </header>
+                      <p className="chat-turn-message">{turn.message}</p>
+                    </article>
+                  </li>
                 ))}
-              </ul>
-            </section>
-          )}
+              </ol>
+            )}
+          </section>
 
           <p className="chat-shell-note">The profile summary panel remains visible while chat is active.</p>
         </section>

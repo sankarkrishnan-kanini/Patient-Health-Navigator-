@@ -27,13 +27,11 @@ test.describe("workspace smoke flow", () => {
     });
   });
 
-  test("validates selector to summary flow and active profile visibility", async ({ page }) => {
+  test("validates selector to transcript flow with timestamps and refresh stability", async ({ page }) => {
     await page.goto("/chat");
 
     await expect(page.getByRole("heading", { level: 1, name: "Patient Chat" })).toBeVisible();
-    await expect(
-      page.getByText("Select and confirm a patient profile to enable chat.")
-    ).toBeVisible();
+    await expect(page.getByText("Select a showcase profile before starting chat.")).toBeVisible();
 
     await page.getByRole("radio", { name: /Patient 400/i }).check();
     await page.getByRole("button", { name: "Confirm Selection" }).click();
@@ -46,9 +44,24 @@ test.describe("workspace smoke flow", () => {
     await page.getByLabel("Message").fill("Test conversation started");
     await page.getByRole("button", { name: "Send" }).click();
 
-    await expect(page.getByRole("heading", { level: 3, name: "Queued Messages" })).toBeVisible();
-    await expect(page.getByText("Patient 400: Test conversation started")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Conversation Transcript" })).toBeVisible();
+    const turns = page.locator(".chat-turn");
+    await expect(turns).toHaveCount(2);
+    await expect(turns.nth(0)).toContainText("You");
+    await expect(turns.nth(0)).toContainText("Test conversation started");
+    await expect(turns.nth(1)).toContainText("Assistant");
+    await expect(turns.nth(1)).toContainText("Message captured");
+    await expect(page.locator(".chat-turn time")).toHaveCount(2);
     await expect(page.getByText("Current profile: Patient 400")).toBeVisible();
+
+    await page.reload();
+
+    await expect(page.getByText("Current profile: Patient 400")).toBeVisible();
+    await expect(page.getByRole("heading", { level: 3, name: "Conversation Transcript" })).toBeVisible();
+    const turnsAfterReload = page.locator(".chat-turn");
+    await expect(turnsAfterReload).toHaveCount(2);
+    await expect(turnsAfterReload.nth(0)).toContainText("You");
+    await expect(turnsAfterReload.nth(1)).toContainText("Assistant");
 
     await page.getByRole("radio", { name: /Patient 403/i }).check();
     await page.getByRole("button", { name: "Confirm Selection" }).click();
@@ -57,6 +70,7 @@ test.describe("workspace smoke flow", () => {
     await expect(page.getByText("Profile ready. You can start chatting.")).toBeVisible();
     await expect(page.getByText("Current profile: Patient 403")).toBeVisible();
     await expect(page.getByText("Review blood pressure trend (planned)")).toBeVisible();
+    await expect(page.getByText("No transcript turns yet. Send a message to begin.")).toBeVisible();
   });
 
   test("validates load failure and retry recovery", async ({ page }) => {

@@ -4,6 +4,7 @@ import { POST as POST_SESSION } from "@/app/api/chat/session/route";
 import { POST as POST_RESET } from "@/app/api/chat/session/reset/route";
 import { CORRELATION_ID_HEADER } from "@/lib/correlation-id";
 import {
+  appendConversationTurn,
   getConversationTurnCount,
   resetConversationSessionStoreForTests
 } from "@/lib/chat-session";
@@ -109,6 +110,639 @@ describe("POST /api/chat request context propagation", () => {
         requestAccepted: true
       }
     });
+    expect(body.data.turn.assistantMessage).toContain("Medication A");
+    expect(body.data.turn.assistantMessage).toContain("Blood sugar management");
+  });
+
+  it("applies plain-language controls to default scaffold response", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "hello"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("workflow");
+    expect(body.data.turn.assistantMessage).toContain("details");
+    expect(body.data.turn.assistantMessage).toContain("passing");
+    expect(body.data.turn.assistantMessage).not.toContain("orchestration");
+    expect(body.data.turn.assistantMessage).not.toContain("propagation");
+    expect(body.data.turn.assistantMessage).not.toContain("Want me to restate this in simpler words?");
+  });
+
+  it("returns safe medication fallback when profile details are missing", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-402" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What meds should I take today?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Medication B");
+    expect(body.data.turn.assistantMessage).toContain("purpose not recorded");
+    expect(body.data.turn.assistantMessage).toContain("cannot add assumptions");
+    expect(body.data.turn.assistantMessage).toContain("Want me to explain one medication");
+    expect(body.data.turn.assistantMessage).not.toContain("cannot diagnose new conditions");
+  });
+
+  it("returns profile-linked plain-language condition explanations", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-400" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Can you explain my condition?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Condition A");
+    expect(body.data.turn.assistantMessage).toContain("plain language");
+    expect(body.data.turn.assistantMessage).toContain("active profile for patient-400");
+    expect(body.data.turn.assistantMessage).toContain(
+      "Want a shorter, plain-language explanation for one condition?"
+    );
+    expect(body.data.turn.assistantMessage).not.toContain("cannot diagnose new conditions");
+  });
+
+  it("routes diagnosis-intent prompts to a consistent safe boundary response", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Can you diagnose me with diabetes?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot diagnose new conditions");
+    expect(body.data.turn.assistantMessage).toContain("cannot confirm a diagnosis");
+    expect(body.data.turn.assistantMessage).not.toContain("Medication A");
+    expect(body.data.turn.assistantMessage).not.toContain("you have diabetes");
+  });
+
+  it("returns appointment-grounded response with active profile schedule data", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("upcoming visit details");
+    expect(body.data.turn.assistantMessage).toContain("2099-01-01T00:00:00Z");
+  });
+
+  it("keeps appointment-grounded outputs deterministic across repeated prompts", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const first = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat-1"
+      )
+    );
+    const firstBody = await first.json();
+
+    const second = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat-2"
+      )
+    );
+    const secondBody = await second.json();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(firstBody.data.turn.assistantMessage).toBe(secondBody.data.turn.assistantMessage);
+  });
+
+  it("returns care-plan grounded response with active tasks", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-402" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What is in my care plan?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("care plan tasks");
+    expect(body.data.turn.assistantMessage).toContain("Annual wellness follow-up");
+  });
+
+  it("returns lifestyle guidance grounded to profile context", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-402" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What should I eat?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Medication B");
+    expect(body.data.turn.assistantMessage).toContain("Twice daily with meals");
+    expect(body.data.turn.assistantMessage).toContain("Annual wellness follow-up");
+  });
+
+  it("returns safe boundary for out-of-scope lifestyle requests", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-402" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Build me an exact 7-day meal plan with macro targets."
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain(
+      "cannot create a personalized medical diet or exercise prescription"
+    );
+  });
+
+  it("keeps lifestyle guidance deterministic across repeated prompts", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-402" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const first = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What should I eat?"
+        },
+        "cid-chat-1"
+      )
+    );
+    const firstBody = await first.json();
+
+    const second = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What should I eat?"
+        },
+        "cid-chat-2"
+      )
+    );
+    const secondBody = await second.json();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(firstBody.data.turn.assistantMessage).toBe(secondBody.data.turn.assistantMessage);
+  });
+
+  it("resolves shorthand follow-up references from prior appointment turn", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const first = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat-1"
+      )
+    );
+    const firstBody = await first.json();
+
+    const followUp = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is it?"
+        },
+        "cid-chat-2"
+      )
+    );
+    const followUpBody = await followUp.json();
+
+    expect(first.status).toBe(200);
+    expect(followUp.status).toBe(200);
+    expect(followUpBody.data.turn.assistantMessage).toContain("2099-01-01T00:00:00Z");
+    expect(followUpBody.data.turn.assistantMessage).toBe(firstBody.data.turn.assistantMessage);
+  });
+
+  it("returns a fallback prompt when shorthand resolution confidence is low", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-405" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "What about that?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("I want to make sure I follow you");
+    expect(body.data.turn.assistantMessage).toContain("medication, condition, appointment, care plan, or lifestyle routine");
+  });
+
+  it("stays coherent across six exchanges in the same bound session", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const prompts = [
+      "When is my next appointment?",
+      "When is it?",
+      "What is in my care plan?",
+      "What about that?",
+      "When is it?",
+      "What about that?"
+    ];
+
+    const responses: string[] = [];
+    for (let index = 0; index < prompts.length; index += 1) {
+      const response = await POST_CHAT(
+        buildJsonRequest(
+          "http://localhost:3030/api/chat",
+          "POST",
+          {
+            conversationId: startedBody.data.conversationId,
+            message: prompts[index]
+          },
+          `cid-chat-${index}`
+        )
+      );
+      const body = await response.json();
+
+      expect(response.status).toBe(200);
+      responses.push(body.data.turn.assistantMessage);
+    }
+
+    expect(responses[0]).toContain("2099-01-01T00:00:00Z");
+    expect(responses[1]).toContain("2099-01-01T00:00:00Z");
+    expect(responses[2]).toContain("Review blood pressure trend");
+    expect(responses[3]).toContain("Review blood pressure trend");
+    expect(responses[4]).toContain("Review blood pressure trend");
+    expect(responses[5]).toContain("Review blood pressure trend");
+  });
+
+  it("rewrites contradictory appointment responses using recent in-session history", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    appendConversationTurn({
+      conversationId: startedBody.data.conversationId,
+      userMessage: "Do I have upcoming visits?",
+      assistantMessage:
+        "I checked your active profile and there are no upcoming visits listed right now. If this seems out of date, please confirm your profile or check with your care team.",
+      memoryContext: {
+        domain: "appointment",
+        entityReferences: [],
+        confidence: "high"
+      }
+    });
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("no upcoming visits listed");
+    expect(body.data.turn.assistantMessage).not.toContain("2099-01-01T00:00:00Z");
+  });
+
+  it("uses safe fallback when contradiction is detected but consistency cannot be guaranteed", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-403" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    appendConversationTurn({
+      conversationId: startedBody.data.conversationId,
+      userMessage: "Do I have upcoming visits?",
+      assistantMessage:
+        "I checked your active profile and there are no upcoming visits listed right now. If this seems out of date, please confirm your profile or check with your care team.",
+      memoryContext: {
+        domain: "appointment",
+        entityReferences: [],
+        confidence: "low"
+      }
+    });
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "When is my next appointment?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("I may be mixing details from earlier messages");
+  });
+
+  it("returns appointment fallback when schedule data is missing", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Do I have any upcoming appointments?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("no upcoming visits listed");
+  });
+
+  it("returns condition boundary messaging for unknown condition requests", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-400" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Explain asthma"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("do not see 'asthma'");
+    expect(body.data.turn.assistantMessage).toContain("cannot confirm or diagnose new conditions");
+  });
+
+  it("keeps condition explanations consistent across repeated prompts", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-400" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const first = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Can you explain my condition?"
+        },
+        "cid-chat-1"
+      )
+    );
+    const firstBody = await first.json();
+
+    const second = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Can you explain my condition?"
+        },
+        "cid-chat-2"
+      )
+    );
+    const secondBody = await second.json();
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(firstBody.data.turn.assistantMessage).toBe(secondBody.data.turn.assistantMessage);
   });
 
   it("keeps context injection consistent across multi-turn requests", async () => {
