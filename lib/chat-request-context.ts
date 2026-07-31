@@ -18,7 +18,7 @@ function expectedSnapshotRef(patientId: string): string {
   return `showcase-profile-summary:${patientId}`;
 }
 
-function validateBinding(binding: SessionBinding | null): void {
+function validateBinding(binding: SessionBinding | null): asserts binding is SessionBinding {
   if (!binding) {
     throw new AppError(
       "SESSION_BINDING_MISSING",

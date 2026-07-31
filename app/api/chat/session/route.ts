@@ -181,13 +181,22 @@ export async function POST(request: NextRequest) {
   try {
     const payload = await parseSessionStartPayload(request);
     const session = startConversationSession(payload);
+    const binding = session.binding;
+    if (!binding) {
+      throw new AppError(
+        "SESSION_BINDING_MISSING",
+        "Conversation session started without a patient binding.",
+        500
+      );
+    }
+
     const response = apiSuccess(
       {
         conversationId: session.conversationId,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
         clientProvided: session.clientProvided,
-        binding: session.binding,
+        binding,
         idFormat: CONVERSATION_ID_FORMAT
       },
       201
@@ -197,9 +206,9 @@ export async function POST(request: NextRequest) {
       conversationId: session.conversationId,
       clientProvided: session.clientProvided,
       createdAt: session.createdAt,
-      patientId: session.binding.patientId,
-      contextSnapshotRef: session.binding.contextSnapshotRef,
-      contextSnapshotVersion: session.binding.contextSnapshotVersion
+      patientId: binding.patientId,
+      contextSnapshotRef: binding.contextSnapshotRef,
+      contextSnapshotVersion: binding.contextSnapshotVersion
     });
 
     log.info("api.request.completed", {
@@ -221,18 +230,27 @@ export async function PATCH(request: NextRequest) {
   try {
     const payload = await parseSessionBindingPatchPayload(request);
     const session = updateConversationSessionBinding(payload);
+    const binding = session.binding;
+    if (!binding) {
+      throw new AppError(
+        "SESSION_BINDING_MISSING",
+        "Conversation session binding update completed without a patient binding.",
+        500
+      );
+    }
+
     const response = apiSuccess({
       conversationId: session.conversationId,
       createdAt: session.createdAt,
       updatedAt: session.updatedAt,
-      binding: session.binding
+      binding
     });
 
     log.info("chat.session.binding.updated", {
       conversationId: session.conversationId,
-      patientId: session.binding.patientId,
-      contextSnapshotRef: session.binding.contextSnapshotRef,
-      contextSnapshotVersion: session.binding.contextSnapshotVersion
+      patientId: binding.patientId,
+      contextSnapshotRef: binding.contextSnapshotRef,
+      contextSnapshotVersion: binding.contextSnapshotVersion
     });
 
     log.info("api.request.completed", {

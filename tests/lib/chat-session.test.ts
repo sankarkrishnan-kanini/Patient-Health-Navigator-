@@ -1,6 +1,8 @@
 import {
   appendConversationTurn,
   CONVERSATION_ID_REGEX,
+  DEFAULT_TURN_MEMORY_WINDOW,
+  getRecentConversationTurns,
   getConversationTurnCount,
   getConversationSessionById,
   resetConversationSession,
@@ -130,5 +132,27 @@ describe("chat session start", () => {
     expect(second.clearedTurnCount).toBe(0);
     expect(second.bindingCleared).toBe(false);
     expect(second.sessionState).toBe("ready_for_rebind");
+  });
+
+  it("returns a deterministic bounded recent-turn window", () => {
+    const started = startConversationSession({ selectedPatientId: "patient-401" });
+
+    for (let index = 0; index < DEFAULT_TURN_MEMORY_WINDOW + 2; index += 1) {
+      appendConversationTurn({
+        conversationId: started.conversationId,
+        userMessage: `u${index}`,
+        assistantMessage: `a${index}`,
+        memoryContext: {
+          domain: "general",
+          entityReferences: [],
+          confidence: "high"
+        }
+      });
+    }
+
+    const turns = getRecentConversationTurns(started.conversationId);
+    expect(turns).toHaveLength(DEFAULT_TURN_MEMORY_WINDOW);
+    expect(turns[0].userMessage).toBe("u2");
+    expect(turns.at(-1)?.assistantMessage).toBe(`a${DEFAULT_TURN_MEMORY_WINDOW + 1}`);
   });
 });

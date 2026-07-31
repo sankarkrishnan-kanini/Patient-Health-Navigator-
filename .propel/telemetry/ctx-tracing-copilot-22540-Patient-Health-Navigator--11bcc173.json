@@ -1,0 +1,47 @@
+{
+  "schema_url": "https://opentelemetry.io/schemas/1.36.0",
+  "resource": {
+    "service.name": "propeliq.ctx-tracker",
+    "gen_ai.framework": "copilot",
+    "user.name": "MaegeshSuresh",
+    "user.full_name": "Maegesh-16",
+    "user.id": "MaegeshSuresh",
+    "user.email": "maegesh.suresh@kanini.com",
+    "host.name": "KANINI-LTP-1054",
+    "os.type": "windows",
+    "os.version": "11",
+    "host.arch": "AMD64"
+  },
+  "gen_ai.conversation.id": "copilot-22540-Patient-Health-Navigator--11bcc173",
+  "gen_ai.provider.name": "openai",
+  "gen_ai.operation.name": "chat",
+  "gen_ai.request.model": null,
+  "gen_ai.system_instructions": [],
+  "context_window": {
+    "limit_tokens": 128000,
+    "counting_method": "estimated"
+  },
+  "created_at": "2026-07-31T12:42:40",
+  "updated_at": "2026-07-31T12:42:40",
+  "_cumulative_input_tokens": 861,
+  "turns": [
+    {
+      "turn_id": 1,
+      "event.name": "gen_ai.client.inference.operation.details",
+      "start_time": "2026-07-31T12:42:40",
+      "gen_ai.operation.name": "chat",
+      "gen_ai.input.messages": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "content": "C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator->git status\r\nOn branch maegesh/features\r\nChanges not staged for commit:\r\n  (use \"git add <file>...\" to update what will be committed)\r\n  (use \"git restore <file>...\" to discard changes in working directory)\r\n        modified:   .propel/hooks/context_tracker_tiktoken/__pycache__/core.cpython-314.pyc\r\n        modified:   .propel/hooks/knowledge_map/__pycache__/_config.cpython-314.pyc\r\n        modified:   app/api/chat/route.ts\r\n        modified:   app/api/chat/session/route.ts\r\n        modified:   app/chat/page.tsx\r\n        modified:   app/globals.css\r\n        modified:   lib/chat-request-context.ts\r\n        modified:   lib/chat-session.ts\r\n        modified:   lib/showcase/profile-summary.ts\r\n        modified:   tests/e2e/smoke.spec.ts\r\n        modified:   tests/lib/chat-route-context.test.ts\r\n        modified:   tests/lib/chat-session.test.ts\r\n\r\nUntracked files:\r\n  (use \"git add <file>...\" to include in what will be committed)\r\n        .propel/telemetry/ctx-tracing-copilot-10152-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-14484-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-15936-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-16724-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-19164-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-23892-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-24472-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-25260-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-28488-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-29564-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-33860-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-3420-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-38068-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-5352-Patient-Health-Navigator--11bcc173.json\r\n        .propel/telemetry/ctx-tracing-copilot-9392-Patient-Health-Navigator--11bcc173.json\r\n        lib/showcase/careplan-appointment-guidance.ts\r\n        lib/showcase/chat-transcript.ts\r\n        lib/showcase/clarification-prompt.ts\r\n        lib/showcase/condition-guidance.ts\r\n        lib/showcase/diagnosis-boundary.ts\r\n        lib/showcase/lifestyle-guidance.ts\r\n        lib/showcase/medication-guidance.ts\r\n        lib/showcase/plain-language-controls.ts\r\n        lib/showcase/reference-resolution.ts\r\n        lib/showcase/response-consistency-guard.ts\r\n        tests/lib/careplan-appointment-guidance.test.ts\r\n        tests/lib/chat-transcript.test.ts\r\n        tests/lib/clarification-prompt.test.ts\r\n        tests/lib/condition-guidance.test.ts\r\n        tests/lib/diagnosis-boundary.test.ts\r\n        tests/lib/lifestyle-guidance.test.ts\r\n        tests/lib/medication-guidance.test.ts\r\n        tests/lib/plain-language-controls.test.ts\r\n        tests/lib/reference-resolution.test.ts\r\n        tests/lib/response-consistency-guard.test.ts\r\n        tests/lib/us-007-validation.test.ts\r\n\r\n        So this is my sttatus, Is it okay to push"
+            }
+          ]
+        }
+      ],
+      "gen_ai.usage.input_tokens": 861
+    }
+  ]
+}

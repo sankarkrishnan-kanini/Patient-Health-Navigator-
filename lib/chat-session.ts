@@ -34,6 +34,28 @@ export type SessionTurnAppendInput = {
   conversationId: string;
   userMessage: string;
   assistantMessage: string;
+  memoryContext?: ConversationTurnMemoryContext;
+};
+
+export type ConversationTurnMemoryContext = {
+  domain:
+    | "medication"
+    | "condition"
+    | "appointment"
+    | "care-plan"
+    | "lifestyle"
+    | "diagnosis-boundary"
+    | "general";
+  entityReferences: string[];
+  confidence: "high" | "low";
+};
+
+export type ConversationTurnRecord = {
+  userMessage: string;
+  assistantMessage: string;
+  domain: ConversationTurnMemoryContext["domain"];
+  entityReferences: string[];
+  confidence: ConversationTurnMemoryContext["confidence"];
 };
 
 export type SessionResetResult = {
@@ -45,8 +67,9 @@ export type SessionResetResult = {
 };
 
 const MAX_GENERATION_ATTEMPTS = 8;
+export const DEFAULT_TURN_MEMORY_WINDOW = 10;
 const sessionStore = new Map<string, ConversationSessionMetadata>();
-const turnMemoryStore = new Map<string, Array<{ userMessage: string; assistantMessage: string }>>();
+const turnMemoryStore = new Map<string, ConversationTurnRecord[]>();
 
 function ensureNonEmptyString(value: string, fieldName: string): string {
   const normalized = value.trim();
@@ -204,7 +227,13 @@ export function appendConversationTurn(input: SessionTurnAppendInput): number {
   }
 
   const turns = turnMemoryStore.get(normalizedConversationId) ?? [];
-  turns.push({ userMessage, assistantMessage });
+  turns.push({
+    userMessage,
+    assistantMessage,
+    domain: input.memoryContext?.domain ?? "general",
+    entityReferences: input.memoryContext?.entityReferences ?? [],
+    confidence: input.memoryContext?.confidence ?? "high"
+  });
   turnMemoryStore.set(normalizedConversationId, turns);
   return turns.length;
 }
@@ -212,6 +241,15 @@ export function appendConversationTurn(input: SessionTurnAppendInput): number {
 export function getConversationTurnCount(conversationId: string): number {
   const normalizedConversationId = ensureNonEmptyString(conversationId, "conversationId");
   return (turnMemoryStore.get(normalizedConversationId) ?? []).length;
+}
+
+export function getRecentConversationTurns(
+  conversationId: string,
+  limit = DEFAULT_TURN_MEMORY_WINDOW
+): ConversationTurnRecord[] {
+  const normalizedConversationId = ensureNonEmptyString(conversationId, "conversationId");
+  const turns = turnMemoryStore.get(normalizedConversationId) ?? [];
+  return turns.slice(-Math.max(limit, 0));
 }
 
 export function resetConversationSession(conversationId: string): SessionResetResult {
