@@ -3,6 +3,8 @@ import { POST as POST_CHAT } from "@/app/api/chat/route";
 import { POST as POST_SESSION } from "@/app/api/chat/session/route";
 import { POST as POST_RESET } from "@/app/api/chat/session/reset/route";
 import { CORRELATION_ID_HEADER } from "@/lib/correlation-id";
+import * as llmOrchestration from "@/lib/showcase/llm-orchestration";
+import * as emergencyEscalationTemplate from "@/lib/showcase/emergency-escalation-template";
 import {
   appendConversationTurn,
   getConversationTurnCount,
@@ -214,6 +216,8 @@ describe("POST /api/chat request context propagation", () => {
   });
 
   it("routes diagnosis-intent prompts to a consistent safe boundary response", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
     const started = await POST_SESSION(
       buildJsonRequest(
         "http://localhost:3030/api/chat/session",
@@ -240,8 +244,402 @@ describe("POST /api/chat request context propagation", () => {
     expect(response.status).toBe(200);
     expect(body.data.turn.assistantMessage).toContain("cannot diagnose new conditions");
     expect(body.data.turn.assistantMessage).toContain("cannot confirm a diagnosis");
+    expect(body.data.turn.assistantMessage).toContain("contact your care team now");
     expect(body.data.turn.assistantMessage).not.toContain("Medication A");
     expect(body.data.turn.assistantMessage).not.toContain("you have diabetes");
+    expect(body.data.safety.diagnosisBoundary).toEqual({
+      ruleSetVersion: "diagnosis-intent.v1",
+      templateVersion: "diagnosis-boundary-template.v1",
+      templateId: "DX-BOUNDARY-001",
+      triggerReason: "diagnosis_intent_match",
+      matchedSignals: ["diagnosis_keyword"],
+      matchedRuleIds: ["DX-RULE-001"],
+      contextSources: ["showcase-profile-summary:patient-401"],
+      handoff: {
+        careTeamContactRequired: true,
+        escalationGuidance:
+          "For severe or rapidly worsening symptoms, seek urgent in-person care or emergency services immediately."
+      }
+    });
+    expect(modelInvocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks dosage-change medication directives with deterministic refusal routing", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Can I increase my dose tonight?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot provide dosage change instructions");
+    expect(body.data.turn.assistantMessage).toContain("contact your care team now");
+    expect(body.data.safety.medicationBoundary).toEqual({
+      category: "dosage-change",
+      ruleSetVersion: "medication-boundary.v1",
+      matchedRuleIds: ["MED-BOUNDARY-DOSE-001"],
+      triggerReason: "medication_dose_or_stop_request",
+      contextSources: ["showcase-profile-summary:patient-401"],
+      handoff: {
+        careTeamContactRequired: true,
+        guidance:
+          "Please contact your care team now before changing, stopping, or switching medication."
+      }
+    });
+    expect(modelInvocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks medication-stop directives with deterministic refusal routing", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Should I stop taking Medication A?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot advise stopping or switching medication");
+    expect(body.data.turn.assistantMessage).not.toContain("stop medication now");
+    expect(body.data.safety.medicationBoundary.category).toBe("stop-change");
+    expect(body.data.safety.medicationBoundary.matchedRuleIds).toEqual(["MED-BOUNDARY-STOP-001"]);
+    expect(modelInvocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("blocks lab interpretation prompts with care-team redirection and no clinical judgment", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Are my lab results normal?"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot interpret lab results");
+    expect(body.data.turn.assistantMessage).toContain("contact your care team");
+    expect(body.data.turn.assistantMessage.toLowerCase()).not.toContain("normal");
+    expect(body.data.turn.assistantMessage.toLowerCase()).not.toContain("abnormal");
+    expect(body.data.safety.labBoundary).toEqual({
+      ruleSetVersion: "lab-boundary.v1",
+      matchedRuleIds: ["LAB-BOUNDARY-001"],
+      triggerReason: "lab_interpretation_request",
+      contextSources: ["showcase-profile-summary:patient-401"],
+      prohibitedPhraseRuleSetVersion: "lab-judgment-phrases.v1",
+      blockedPhrases: [],
+      correctionPath: "none",
+      handoff: {
+        careTeamContactRequired: true,
+        guidance:
+          "Please contact your care team for personalized interpretation of your lab report."
+      }
+    });
+    expect(modelInvocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("intercepts emergency symptom prompts with trigger metadata and urgent boundary response", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "I have CHEST-PAIN and trouble breathing right now"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Possible emergency symptoms detected");
+    expect(body.data.turn.assistantMessage).toContain("Call emergency services now");
+    expect(body.data.turn.assistantMessage).toContain("immediately");
+    expect(body.data.turn.assistantMessage).toContain("cannot safely triage emergency symptoms in chat");
+    expect(body.data.safety.emergencyTrigger.ruleSetVersion).toBe("emergency-triggers.v1");
+    expect(body.data.safety.emergencyTrigger.matches).toEqual([
+      {
+        ruleId: "ER-CHEST-PAIN-001",
+        triggerLabel: "chest-pain",
+        matchedExpression: "chest pain"
+      },
+      {
+        ruleId: "ER-BREATHING-001",
+        triggerLabel: "breathing-difficulty",
+        matchedExpression: "trouble breathing"
+      }
+    ]);
+    expect(body.data.safety.emergencyEscalation).toEqual({
+      templateVersion: "emergency-escalation.v1",
+      templateId: "ESC-MULTI-SYMPTOM-001",
+      escalationClass: "multi-symptom",
+      headline: "Possible emergency symptoms detected: chest pain and breathing difficulty.",
+      immediateActions: [
+        "Call emergency services now.",
+        "Go to the nearest emergency department immediately."
+      ],
+      safetyBoundary: "I cannot safely triage emergency symptoms in chat.",
+      minimizationValidation: {
+        ruleSetVersion: "emergency-minimization.v1",
+        violationDetected: false,
+        correctionPath: "none",
+        matchedRuleIds: []
+      }
+    });
+    expect(body.data.turn.assistantMessage).not.toContain("Medication A");
+    expect(modelInvocationSpy).not.toHaveBeenCalled();
+  });
+
+  it("invokes normal model generation orchestration when no emergency trigger is matched", async () => {
+    const modelInvocationSpy = vi.spyOn(llmOrchestration, "invokeModelGeneration");
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Summarize my medications"
+        },
+        "cid-chat"
+      )
+    );
+
+    expect(response.status).toBe(200);
+    expect(modelInvocationSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("post-generation guard overrides diagnosis-violating model draft", async () => {
+    vi.spyOn(llmOrchestration, "invokeModelGeneration").mockReturnValue(
+      "You have diabetes based on this symptom pattern."
+    );
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "hello"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot diagnose conditions");
+    expect(body.data.safety.postGenerationGuardrail).toEqual({
+      overrideApplied: true,
+      violationCategory: "diagnosis",
+      overrideReason: "prohibited_advice_detected",
+      matchedRuleIds: ["PG-DIAGNOSIS-001"]
+    });
+  });
+
+  it("post-generation guard overrides medication-violating model draft", async () => {
+    vi.spyOn(llmOrchestration, "invokeModelGeneration").mockReturnValue(
+      "You should increase your dose and stop taking Medication A today."
+    );
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "hello"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot provide medication dose changes");
+    expect(body.data.safety.postGenerationGuardrail.violationCategory).toBe("medication");
+    expect(body.data.safety.postGenerationGuardrail.matchedRuleIds).toEqual(["PG-MEDICATION-001"]);
+  });
+
+  it("post-generation guard overrides lab-judgment model draft", async () => {
+    vi.spyOn(llmOrchestration, "invokeModelGeneration").mockReturnValue(
+      "Your lab results are normal and in a safe range."
+    );
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "hello"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("cannot interpret lab results");
+    expect(body.data.safety.postGenerationGuardrail.violationCategory).toBe("lab");
+    expect(body.data.safety.postGenerationGuardrail.matchedRuleIds).toEqual(["PG-LAB-001"]);
+  });
+
+  it("filters minimization language from emergency path using deterministic rewrite", async () => {
+    vi.spyOn(emergencyEscalationTemplate, "buildEmergencyEscalationResponse").mockReturnValue({
+      templateVersion: "emergency-escalation.v1",
+      template: {
+        templateId: "ESC-MULTI-SYMPTOM-001",
+        escalationClass: "multi-symptom",
+        headline: "Possible emergency symptoms detected: chest pain and breathing difficulty.",
+        immediateActions: [
+          "Call emergency services now.",
+          "Go to the nearest emergency department immediately."
+        ],
+        safetyBoundary: "I cannot safely triage emergency symptoms in chat."
+      },
+      assistantMessage:
+        "This is probably fine. Call emergency services now. You can just monitor for now."
+    });
+
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "I have chest pain"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Possible emergency symptoms detected");
+    expect(body.data.turn.assistantMessage).not.toContain("probably fine");
+    expect(body.data.turn.assistantMessage).not.toContain("just monitor");
+    expect(body.data.safety.emergencyEscalation.minimizationValidation).toEqual({
+      ruleSetVersion: "emergency-minimization.v1",
+      violationDetected: true,
+      correctionPath: "rewrite_template",
+      matchedRuleIds: ["MIN-002", "MIN-004"]
+    });
   });
 
   it("returns appointment-grounded response with active profile schedule data", async () => {

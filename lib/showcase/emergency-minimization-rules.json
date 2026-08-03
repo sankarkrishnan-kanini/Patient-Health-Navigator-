@@ -1,0 +1,25 @@
+{
+  "ruleSetVersion": "emergency-minimization.v1",
+  "rules": [
+    {
+      "ruleId": "MIN-001",
+      "phrase": "not serious"
+    },
+    {
+      "ruleId": "MIN-002",
+      "phrase": "probably fine"
+    },
+    {
+      "ruleId": "MIN-003",
+      "phrase": "wait and see"
+    },
+    {
+      "ruleId": "MIN-004",
+      "phrase": "just monitor"
+    },
+    {
+      "ruleId": "MIN-005",
+      "phrase": "no rush"
+    }
+  ]
+}

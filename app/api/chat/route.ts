@@ -18,6 +18,14 @@ import { buildCarePlanAppointmentGuidance } from "@/lib/showcase/careplan-appoin
 import { buildLifestyleGuidance } from "@/lib/showcase/lifestyle-guidance";
 import { resolveFollowUpReference } from "@/lib/showcase/reference-resolution";
 import { applyResponseConsistencyGuard } from "@/lib/showcase/response-consistency-guard";
+import { detectEmergencyTriggers } from "@/lib/showcase/emergency-trigger-engine";
+import { invokeModelGeneration } from "@/lib/showcase/llm-orchestration";
+import { buildEmergencyEscalationResponse } from "@/lib/showcase/emergency-escalation-template";
+import { applyEmergencyMinimizationGuard } from "@/lib/showcase/emergency-minimization-guard";
+import { persistGuardrailActivationEvent } from "@/lib/guardrail-audit";
+import { buildMedicationBoundary } from "@/lib/showcase/medication-boundary";
+import { buildLabInterpretationBoundary } from "@/lib/showcase/lab-interpretation-boundary";
+import { applyPostGenerationGuardrail } from "@/lib/showcase/post-generation-guardrail";
 
 type ChatRequestPayload = {
   conversationId: string;
@@ -78,6 +86,17 @@ function routeLogger(request: NextRequest) {
   return { correlationId, log };
 }
 
+function buildTurnResponseIdentifiers(conversationId: string): {
+  userTurnId: string;
+  assistantResponseId: string;
+} {
+  const seed = `${Date.now()}_${Math.random().toString(16).slice(2, 10)}`;
+  return {
+    userTurnId: `turn_${conversationId}_${seed}`,
+    assistantResponseId: `asst_${conversationId}_${seed}`
+  };
+}
+
 // Contract: GET /api/chat currently returns 501 until chat orchestration is implemented.
 export async function GET(request: NextRequest) {
   const { correlationId, log } = routeLogger(request);
@@ -106,6 +125,7 @@ export async function POST(request: NextRequest) {
     const recentTurns = getRecentConversationTurns(context.conversationId);
     const referenceResolution = resolveFollowUpReference(payload.message, recentTurns);
     const effectiveMessage = referenceResolution.resolvedMessage ?? payload.message;
+    const emergencyTriggerResult = detectEmergencyTriggers(effectiveMessage);
     const profileSummary = await fetchShowcaseProfileSummary(context.patientId, { delayMs: 0 });
     if (!profileSummary) {
       throw new AppError(
@@ -115,6 +135,394 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (emergencyTriggerResult.isEmergency) {
+      const escalationResponse = buildEmergencyEscalationResponse(emergencyTriggerResult.matches);
+      const minimizationGuard = applyEmergencyMinimizationGuard({
+        assistantMessage: escalationResponse.assistantMessage,
+        template: escalationResponse.template
+      });
+      const assistantMessage = minimizationGuard.assistantMessage;
+      const identifiers = buildTurnResponseIdentifiers(context.conversationId);
+      const activationEvent = persistGuardrailActivationEvent({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        triggerReason: "emergency_trigger_match",
+        ruleId: emergencyTriggerResult.matches[0]?.ruleId ?? "",
+        ruleIds: emergencyTriggerResult.matches.map((match) => match.ruleId),
+        matchedExpressions: emergencyTriggerResult.matches.map((match) => match.matchedExpression),
+        userTurnId: identifiers.userTurnId,
+        assistantResponseId: identifiers.assistantResponseId
+      });
+
+      log.info("chat.orchestration.bypass_decision", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        bypassed: true,
+        modelCallSkipped: true,
+        reason: "emergency_trigger_match",
+        matchedRuleIds: emergencyTriggerResult.matches.map((match) => match.ruleId)
+      });
+
+      log.info("chat.emergency_trigger.detected", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        ruleSetVersion: emergencyTriggerResult.ruleSetVersion,
+        matches: emergencyTriggerResult.matches
+      });
+
+      log.info("chat.emergency_minimization_guard.reviewed", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        ruleSetVersion: minimizationGuard.ruleSetVersion,
+        violationDetected: minimizationGuard.violationDetected,
+        correctionPath: minimizationGuard.correctionPath,
+        matchedRuleIds: minimizationGuard.matchedRuleIds,
+        matchedPhrases: minimizationGuard.matchedPhrases
+      });
+
+      log.info("chat.guardrail_activation_event.persisted", {
+        eventId: activationEvent.eventId,
+        eventType: activationEvent.eventType,
+        timestamp: activationEvent.timestamp,
+        conversationId: activationEvent.conversationId,
+        patientId: activationEvent.patientId,
+        triggerReason: activationEvent.triggerReason,
+        ruleId: activationEvent.ruleId,
+        ruleIds: activationEvent.ruleIds,
+        userTurnId: activationEvent.userTurnId,
+        assistantResponseId: activationEvent.assistantResponseId
+      });
+
+      const response = apiSuccess({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        contextSnapshotVersion: context.contextSnapshotVersion,
+        requestAccepted: true,
+        safety: {
+          emergencyTrigger: {
+            ruleSetVersion: emergencyTriggerResult.ruleSetVersion,
+            matches: emergencyTriggerResult.matches
+          },
+          emergencyEscalation: {
+            templateVersion: escalationResponse.templateVersion,
+            templateId: escalationResponse.template.templateId,
+            escalationClass: escalationResponse.template.escalationClass,
+            headline: escalationResponse.template.headline,
+            immediateActions: escalationResponse.template.immediateActions,
+            safetyBoundary: escalationResponse.template.safetyBoundary,
+            minimizationValidation: {
+              ruleSetVersion: minimizationGuard.ruleSetVersion,
+              violationDetected: minimizationGuard.violationDetected,
+              correctionPath: minimizationGuard.correctionPath,
+              matchedRuleIds: minimizationGuard.matchedRuleIds
+            }
+          },
+          guardrailAudit: {
+            eventId: activationEvent.eventId,
+            eventType: activationEvent.eventType,
+            timestamp: activationEvent.timestamp,
+            triggerReason: activationEvent.triggerReason,
+            ruleId: activationEvent.ruleId,
+            ruleIds: activationEvent.ruleIds,
+            userTurnId: activationEvent.userTurnId,
+            assistantResponseId: activationEvent.assistantResponseId
+          }
+        },
+        turn: {
+          userMessage: payload.message,
+          assistantMessage,
+          userTurnId: identifiers.userTurnId,
+          assistantResponseId: identifiers.assistantResponseId
+        }
+      });
+
+      const turnCount = appendConversationTurn({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        memoryContext: {
+          domain: "emergency",
+          entityReferences: emergencyTriggerResult.matches.map((match) => match.ruleId),
+          confidence: "high"
+        }
+      });
+
+      log.info("chat.session.turn.appended", {
+        conversationId: context.conversationId,
+        turnCount
+      });
+
+      log.info("api.request.completed", {
+        method: request.method,
+        pathname: request.nextUrl.pathname,
+        statusCode: response.status
+      });
+
+      return attachCorrelationIdHeader(response, correlationId);
+    }
+
+    const diagnosisBoundary = buildDiagnosisBoundary(
+      effectiveMessage,
+      profileSummary,
+      context.contextSnapshotRef
+    );
+    const medicationBoundary = buildMedicationBoundary(
+      effectiveMessage,
+      profileSummary,
+      context.contextSnapshotRef
+    );
+    const labBoundary = buildLabInterpretationBoundary(
+      effectiveMessage,
+      context.contextSnapshotRef
+    );
+
+    if (diagnosisBoundary.isDiagnosisIntent) {
+      const assistantMessage = diagnosisBoundary.assistantMessage ??
+        "I cannot diagnose conditions in chat.";
+
+      log.info("chat.orchestration.bypass_decision", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        bypassed: true,
+        modelCallSkipped: true,
+        reason: diagnosisBoundary.triggerReason,
+        matchedRuleIds: diagnosisBoundary.matchedRuleIds
+      });
+
+      log.info("chat.diagnosis_boundary.routed", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSources: diagnosisBoundary.contextSourceRefs,
+        matchedSignals: diagnosisBoundary.matchedSignals,
+        matchedRuleIds: diagnosisBoundary.matchedRuleIds,
+        ruleSetVersion: diagnosisBoundary.ruleSetVersion,
+        templateVersion: diagnosisBoundary.templateVersion,
+        templateId: diagnosisBoundary.templateId,
+        triggerReason: diagnosisBoundary.triggerReason,
+        handoff: diagnosisBoundary.handoff
+      });
+
+      const response = apiSuccess({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        contextSnapshotVersion: context.contextSnapshotVersion,
+        requestAccepted: true,
+        safety: {
+          diagnosisBoundary: {
+            ruleSetVersion: diagnosisBoundary.ruleSetVersion,
+            templateVersion: diagnosisBoundary.templateVersion,
+            templateId: diagnosisBoundary.templateId,
+            triggerReason: diagnosisBoundary.triggerReason,
+            matchedSignals: diagnosisBoundary.matchedSignals,
+            matchedRuleIds: diagnosisBoundary.matchedRuleIds,
+            contextSources: diagnosisBoundary.contextSourceRefs,
+            handoff: diagnosisBoundary.handoff
+          }
+        },
+        turn: {
+          userMessage: payload.message,
+          assistantMessage
+        }
+      });
+
+      const turnCount = appendConversationTurn({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        memoryContext: {
+          domain: "diagnosis-boundary",
+          entityReferences: diagnosisBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
+
+      log.info("chat.session.turn.appended", {
+        conversationId: context.conversationId,
+        turnCount
+      });
+
+      log.info("api.request.completed", {
+        method: request.method,
+        pathname: request.nextUrl.pathname,
+        statusCode: response.status
+      });
+
+      return attachCorrelationIdHeader(response, correlationId);
+    }
+
+    if (medicationBoundary.isMedicationBoundary) {
+      const assistantMessage =
+        medicationBoundary.assistantMessage ??
+        "I cannot provide medication treatment directives in chat.";
+
+      log.info("chat.orchestration.bypass_decision", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        bypassed: true,
+        modelCallSkipped: true,
+        reason: medicationBoundary.triggerReason,
+        matchedRuleIds: medicationBoundary.matchedRuleIds
+      });
+
+      log.info("chat.medication_boundary.blocked", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        category: medicationBoundary.category,
+        ruleSetVersion: medicationBoundary.ruleSetVersion,
+        matchedRuleIds: medicationBoundary.matchedRuleIds,
+        triggerReason: medicationBoundary.triggerReason,
+        contextSources: medicationBoundary.contextSourceRefs
+      });
+
+      const response = apiSuccess({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        contextSnapshotVersion: context.contextSnapshotVersion,
+        requestAccepted: true,
+        safety: {
+          medicationBoundary: {
+            category: medicationBoundary.category,
+            ruleSetVersion: medicationBoundary.ruleSetVersion,
+            matchedRuleIds: medicationBoundary.matchedRuleIds,
+            triggerReason: medicationBoundary.triggerReason,
+            contextSources: medicationBoundary.contextSourceRefs,
+            handoff: {
+              careTeamContactRequired: true,
+              guidance:
+                "Please contact your care team now before changing, stopping, or switching medication."
+            }
+          }
+        },
+        turn: {
+          userMessage: payload.message,
+          assistantMessage
+        }
+      });
+
+      const turnCount = appendConversationTurn({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        memoryContext: {
+          domain: "medication-boundary",
+          entityReferences: medicationBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
+
+      log.info("chat.session.turn.appended", {
+        conversationId: context.conversationId,
+        turnCount
+      });
+
+      log.info("api.request.completed", {
+        method: request.method,
+        pathname: request.nextUrl.pathname,
+        statusCode: response.status
+      });
+
+      return attachCorrelationIdHeader(response, correlationId);
+    }
+
+    if (labBoundary.isLabInterpretationIntent) {
+      const assistantMessage =
+        labBoundary.assistantMessage ??
+        "I cannot interpret lab results in chat.";
+
+      log.info("chat.orchestration.bypass_decision", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        bypassed: true,
+        modelCallSkipped: true,
+        reason: labBoundary.triggerReason,
+        matchedRuleIds: labBoundary.matchedRuleIds
+      });
+
+      log.info("chat.lab_interpretation_boundary.blocked", {
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        ruleSetVersion: labBoundary.ruleSetVersion,
+        matchedRuleIds: labBoundary.matchedRuleIds,
+        triggerReason: labBoundary.triggerReason,
+        contextSources: labBoundary.contextSourceRefs,
+        prohibitedPhraseRuleSetVersion: labBoundary.prohibitedPhraseRuleSetVersion,
+        blockedPhrases: labBoundary.blockedPhrases,
+        correctionPath: labBoundary.correctionPath
+      });
+
+      const response = apiSuccess({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        contextSnapshotVersion: context.contextSnapshotVersion,
+        requestAccepted: true,
+        safety: {
+          labBoundary: {
+            ruleSetVersion: labBoundary.ruleSetVersion,
+            matchedRuleIds: labBoundary.matchedRuleIds,
+            triggerReason: labBoundary.triggerReason,
+            contextSources: labBoundary.contextSourceRefs,
+            prohibitedPhraseRuleSetVersion: labBoundary.prohibitedPhraseRuleSetVersion,
+            blockedPhrases: labBoundary.blockedPhrases,
+            correctionPath: labBoundary.correctionPath,
+            handoff: {
+              careTeamContactRequired: true,
+              guidance:
+                "Please contact your care team for personalized interpretation of your lab report."
+            }
+          }
+        },
+        turn: {
+          userMessage: payload.message,
+          assistantMessage
+        }
+      });
+
+      const turnCount = appendConversationTurn({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        memoryContext: {
+          domain: "lab-boundary",
+          entityReferences: labBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
+
+      log.info("chat.session.turn.appended", {
+        conversationId: context.conversationId,
+        turnCount
+      });
+
+      log.info("api.request.completed", {
+        method: request.method,
+        pathname: request.nextUrl.pathname,
+        statusCode: response.status
+      });
+
+      return attachCorrelationIdHeader(response, correlationId);
+    }
+
+    log.info("chat.orchestration.bypass_decision", {
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      bypassed: false,
+      modelCallSkipped: false,
+      reason: null,
+      matchedRuleIds: []
+    });
+
+    const modelDraftResponse = invokeModelGeneration({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      message: effectiveMessage
+    });
+
     const medicationGuidance = buildMedicationGuidance(
       effectiveMessage,
       profileSummary,
@@ -122,12 +530,6 @@ export async function POST(request: NextRequest) {
     );
 
     const conditionGuidance = buildConditionGuidance(
-      effectiveMessage,
-      profileSummary,
-      context.contextSnapshotRef
-    );
-
-    const diagnosisBoundary = buildDiagnosisBoundary(
       effectiveMessage,
       profileSummary,
       context.contextSnapshotRef
@@ -178,6 +580,7 @@ export async function POST(request: NextRequest) {
             : [];
 
     const draftAssistantMessage =
+      modelDraftResponse ??
       referenceResolution.fallbackMessage ??
       diagnosisBoundary.assistantMessage ??
       lifestyleGuidance.assistantMessage ??
@@ -186,8 +589,10 @@ export async function POST(request: NextRequest) {
       medicationGuidance.assistantMessage ??
       "Chat orchestration is scaffolded. Session and patient context propagation is active.";
 
+    const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);
+
     const consistencyReview = applyResponseConsistencyGuard({
-      draftResponse: draftAssistantMessage,
+      draftResponse: postGenerationGuard.finalResponse,
       domain: responseDomain,
       entityReferences,
       recentTurns
@@ -234,6 +639,15 @@ export async function POST(request: NextRequest) {
       fallbackApplied: consistencyReview.fallbackApplied,
       reason: consistencyReview.reason,
       sourceTurnOffset: consistencyReview.sourceTurnOffset
+    });
+
+    log.info("chat.post_generation_guardrail.reviewed", {
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      overrideApplied: postGenerationGuard.overrideApplied,
+      violationCategory: postGenerationGuard.violationCategory,
+      overrideReason: postGenerationGuard.overrideReason,
+      matchedRuleIds: postGenerationGuard.matchedRuleIds
     });
 
     if (medicationGuidance.isMedicationIntent) {
@@ -314,6 +728,16 @@ export async function POST(request: NextRequest) {
       contextSnapshotRef: context.contextSnapshotRef,
       contextSnapshotVersion: context.contextSnapshotVersion,
       requestAccepted: true,
+      safety: postGenerationGuard.overrideApplied
+        ? {
+            postGenerationGuardrail: {
+              overrideApplied: postGenerationGuard.overrideApplied,
+              violationCategory: postGenerationGuard.violationCategory,
+              overrideReason: postGenerationGuard.overrideReason,
+              matchedRuleIds: postGenerationGuard.matchedRuleIds
+            }
+          }
+        : undefined,
       turn: {
         userMessage: payload.message,
         assistantMessage
