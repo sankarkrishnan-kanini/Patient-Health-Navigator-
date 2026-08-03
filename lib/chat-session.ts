@@ -45,6 +45,9 @@ export type ConversationTurnMemoryContext = {
     | "care-plan"
     | "lifestyle"
     | "diagnosis-boundary"
+    | "medication-boundary"
+    | "lab-boundary"
+    | "emergency"
     | "general";
   entityReferences: string[];
   confidence: "high" | "low";

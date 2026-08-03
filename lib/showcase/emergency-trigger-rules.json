@@ -1,0 +1,26 @@
+{
+  "ruleSetVersion": "emergency-triggers.v1",
+  "rules": [
+    {
+      "ruleId": "ER-CHEST-PAIN-001",
+      "label": "chest-pain",
+      "phrases": [
+        "chest pain",
+        "pain in chest",
+        "chest pressure",
+        "chest tightness"
+      ]
+    },
+    {
+      "ruleId": "ER-BREATHING-001",
+      "label": "breathing-difficulty",
+      "phrases": [
+        "shortness of breath",
+        "difficulty breathing",
+        "trouble breathing",
+        "cannot breathe",
+        "cant breathe"
+      ]
+    }
+  ]
+}
