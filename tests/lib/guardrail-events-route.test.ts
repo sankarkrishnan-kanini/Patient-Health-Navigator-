@@ -71,12 +71,19 @@ describe("GET /api/chat/guardrail-events", () => {
 
     expect(review.status).toBe(200);
     expect(reviewBody.success).toBe(true);
-    expect(reviewBody.data.count).toBe(1);
+    expect(reviewBody.data.count).toBe(2);
     expect(reviewBody.data.events[0]).toMatchObject({
       eventType: "emergency_guardrail_activation",
       conversationId: startedBody.data.conversationId,
       triggerReason: "emergency_trigger_match",
       ruleId: "ER-CHEST-PAIN-001"
+    });
+    expect(reviewBody.data.events[1]).toMatchObject({
+      eventType: "guardrail_evaluation",
+      conversationId: startedBody.data.conversationId,
+      evaluationName: "emergency_trigger",
+      triggered: true,
+      reason: "emergency_trigger_match"
     });
     expect(reviewBody.data.events[0].timestamp).toBeTruthy();
   });

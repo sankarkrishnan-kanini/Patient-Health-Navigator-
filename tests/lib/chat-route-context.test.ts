@@ -3,6 +3,11 @@ import { POST as POST_CHAT } from "@/app/api/chat/route";
 import { POST as POST_SESSION } from "@/app/api/chat/session/route";
 import { POST as POST_RESET } from "@/app/api/chat/session/reset/route";
 import { CORRELATION_ID_HEADER } from "@/lib/correlation-id";
+import {
+  getConversationTurnAuditCount,
+  getConversationTurnAuditEntries,
+  resetConversationTurnAuditStoreForTests
+} from "@/lib/conversation-turn-audit";
 import * as llmOrchestration from "@/lib/showcase/llm-orchestration";
 import * as emergencyEscalationTemplate from "@/lib/showcase/emergency-escalation-template";
 import {
@@ -30,6 +35,7 @@ function buildJsonRequest(
 describe("POST /api/chat request context propagation", () => {
   beforeEach(() => {
     resetConversationSessionStoreForTests();
+    resetConversationTurnAuditStoreForTests();
   });
 
   it("rejects missing conversation id in chat payload", async () => {
@@ -114,6 +120,13 @@ describe("POST /api/chat request context propagation", () => {
     });
     expect(body.data.turn.assistantMessage).toContain("Medication A");
     expect(body.data.turn.assistantMessage).toContain("Blood sugar management");
+    expect(getConversationTurnAuditCount(startedBody.data.conversationId)).toBe(2);
+
+    const auditEntries = getConversationTurnAuditEntries(startedBody.data.conversationId);
+    expect(auditEntries.map((entry) => entry.role)).toEqual(["user", "assistant"]);
+    expect(auditEntries[0].conversationId).toBe(startedBody.data.conversationId);
+    expect(auditEntries[0].contentReference).toContain("turn_");
+    expect(auditEntries[1].contentReference).toContain("asst_");
   });
 
   it("applies plain-language controls to default scaffold response", async () => {
