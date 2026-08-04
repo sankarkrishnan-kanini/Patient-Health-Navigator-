@@ -17,8 +17,8 @@ Build `pathContext` from the two results:
 
 ```json
 {
-  "brainstorm": {"path": "<propelFilePath>", "content_type": "<contentType>", "mcp_type": "<mcpType>"},
-  "prototype":  {"path": "<propelFilePath>", "content_type": "<contentType>", "mcp_type": "<mcpType>"}
+  "brainstorm": {"path": "<propelFilePath>", "content_type": "<contentType>", "mcp_type": "<mcpType>", "quality_threshold": "<qualityThreshold, or omit if unset>"},
+  "prototype":  {"path": "<propelFilePath>", "content_type": "<contentType>", "mcp_type": "<mcpType>", "quality_threshold": "<qualityThreshold, or omit if unset>"}
 }
 ```
 
@@ -57,7 +57,10 @@ Map candidates to options (top 3 + Custom if >3 produced).
 ```
 SubmitGateDecision(project, runId, stepId="S1", decision="select", selection=[<id>])
 ```
-Reject loops back to S1.
+Reject loops back to S1. `SubmitGateDecision(skip)` is also available here --
+since this workflow only has two steps, skipping S1 skips S2 (the prototype)
+too and completes the run immediately with no handoff (see Step 6). `abort`
+exits without completing.
 
 ## Step 4 — execute S2 inline
 
@@ -69,7 +72,9 @@ Reject loops back to S1.
 
 If `status: "gate_pending"`, render artifact via `AskUserQuestion`.
 - `PASS` verdict auto-approves, complete immediately
-- Any other verdict raises gate; user can approve/reject/abort
+- Any other verdict raises gate; user can approve/reject/skip/abort. Since S2
+  is the last step, `skip` behaves the same as `approve` here (no
+  `skip_pending` step follows).
 
 ## Step 5 — post-approval hook
 
@@ -84,13 +89,18 @@ requires it.
 
 ## Step 6 — handoff
 
-On `status: "complete"`, the response carries `handoffTo: "technical-discovery"`.
-Tell the user the selected concept is ready and offer to start `technical-discovery`
-(its S1 = `/create-spec`, which will consult the approved `prototype` and
-`brainstorm` artifacts per `spec`'s `references` in `project-config.json`).
-`technical-discovery` is itself gate-enforced -- see `orchestrators/technical-discovery.md`
--- so starting it means calling `StartWorkflowRun(workflow="technical-discovery", ...)`,
-not the bare `ReadWorkflow` some older orchestrators still use.
+`concept-validation`'s `handoff` is `null` -- on `status: "complete"`, the
+response carries no `handoffTo`. This workflow ends once the hypothesis
+(prototype) is approved; it does not auto-chain into spec creation. Tell the
+user the selected concept is validated, and offer to separately start
+`greenfield-discovery` (create a spec directly) or `brownfield-discovery`
+(analyze an existing codebase first, then create a spec from the findings) --
+whichever fits their situation -- via
+`StartWorkflowRun(workflow="greenfield-discovery"|"brownfield-discovery", ...)`.
+Both hand off into `technical-discovery` once their own spec gate is
+approved; see `orchestrators/greenfield-discovery.md`,
+`orchestrators/brownfield-discovery.md`, and
+`orchestrators/technical-discovery.md`.
 
 ## Invariants
 
