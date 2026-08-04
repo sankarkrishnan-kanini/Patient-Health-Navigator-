@@ -115,6 +115,26 @@ UI --> User : Render response
 @enduml
 ```
 
+### Conversation Turn Audit Record
+
+The chat audit trail persists one record per role per exchange. The required fields are:
+
+- `auditRecordId`: stable append-only identifier for the audit row.
+- `conversationId`: parent conversation identifier.
+- `exchangeSequence`: monotonic sequence number for the user/assistant pair.
+- `role`: `user` or `assistant`.
+- `contentReference`: reference to the persisted turn content identifier.
+- `timestamp`: ISO 8601 timestamp used for chronological reconstruction.
+
+### Audit Retrieval Endpoints
+
+Review workflows can retrieve audit records through the following endpoints:
+
+- `GET /api/chat/audit?conversationId={id}&startTime={iso}&endTime={iso}&limit={n}&offset={n}` returns combined turn and guardrail records in chronological order.
+- `GET /api/chat/guardrail-events?conversationId={id}&ruleId={ruleId}&limit={n}&startTime={iso}&endTime={iso}&offset={n}` returns guardrail evaluation history.
+
+Both endpoints preserve ascending timestamp ordering before pagination and include linked conversation records for reviewer workflows.
+
 ## 5. Deployment Diagram (Environment View)
 
 ```plantuml

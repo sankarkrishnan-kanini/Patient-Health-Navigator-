@@ -5,11 +5,13 @@ import { safeLogContext } from "@/lib/logger";
 export class AppError extends Error {
   readonly code: string;
   readonly status: number;
+  readonly details?: unknown;
 
-  constructor(code: string, message: string, status = 500) {
+  constructor(code: string, message: string, status = 500, details?: unknown) {
     super(message);
     this.code = code;
     this.status = status;
+    this.details = details;
     this.name = "AppError";
   }
 }
@@ -31,7 +33,7 @@ export function handleRouteError(error: unknown, options: ErrorHandlerOptions) {
 
   if (error instanceof AppError) {
     return attachCorrelationIdHeader(
-      apiError(error.code, error.message, error.status),
+      apiError(error.code, error.message, error.status, error.details),
       options.correlationId
     );
   }

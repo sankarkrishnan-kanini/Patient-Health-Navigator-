@@ -3,6 +3,7 @@ import { apiNotImplemented, apiSuccess } from "@/lib/api-response";
 import { AppError, handleRouteError } from "@/lib/errors";
 import { resolveChatRequestContext } from "@/lib/chat-request-context";
 import { appendConversationTurn, getRecentConversationTurns } from "@/lib/chat-session";
+import { appendConversationTurnAudit } from "@/lib/conversation-turn-audit";
 import {
   attachCorrelationIdHeader,
   getCorrelationIdFromRequest
@@ -22,7 +23,10 @@ import { detectEmergencyTriggers } from "@/lib/showcase/emergency-trigger-engine
 import { invokeModelGeneration } from "@/lib/showcase/llm-orchestration";
 import { buildEmergencyEscalationResponse } from "@/lib/showcase/emergency-escalation-template";
 import { applyEmergencyMinimizationGuard } from "@/lib/showcase/emergency-minimization-guard";
-import { persistGuardrailActivationEvent } from "@/lib/guardrail-audit";
+import {
+  persistGuardrailActivationEvent,
+  persistGuardrailEvaluationEvent
+} from "@/lib/guardrail-audit";
 import { buildMedicationBoundary } from "@/lib/showcase/medication-boundary";
 import { buildLabInterpretationBoundary } from "@/lib/showcase/lab-interpretation-boundary";
 import { applyPostGenerationGuardrail } from "@/lib/showcase/post-generation-guardrail";
@@ -97,6 +101,67 @@ function buildTurnResponseIdentifiers(conversationId: string): {
   };
 }
 
+function getFirstOrFallback(values: string[], fallback: string): string {
+  return values[0] ?? fallback;
+}
+
+function persistGuardrailEvaluation(input: {
+  conversationId: string;
+  patientId: string;
+  contextSnapshotRef: string;
+  evaluationName:
+    | "emergency_trigger"
+    | "diagnosis_boundary"
+    | "medication_boundary"
+    | "lab_interpretation_boundary"
+    | "post_generation_guardrail";
+  triggered: boolean;
+  reason: string;
+  ruleId: string;
+  ruleIds: string[];
+  matchedExpressions: string[];
+  userTurnId: string;
+  assistantResponseId: string;
+}): void {
+  persistGuardrailEvaluationEvent({
+    conversationId: input.conversationId,
+    patientId: input.patientId,
+    contextSnapshotRef: input.contextSnapshotRef,
+    evaluationName: input.evaluationName,
+    triggered: input.triggered,
+    reason: input.reason,
+    ruleId: input.ruleId,
+    ruleIds: input.ruleIds,
+    matchedExpressions: input.matchedExpressions,
+    userTurnId: input.userTurnId,
+    assistantResponseId: input.assistantResponseId
+  });
+}
+
+function persistConversationTurnArtifacts(input: {
+  conversationId: string;
+  userMessage: string;
+  assistantMessage: string;
+  memoryContext?: Parameters<typeof appendConversationTurn>[0]["memoryContext"];
+  contentReferences: {
+    userTurnId: string;
+    assistantResponseId: string;
+  };
+}): number {
+  appendConversationTurnAudit({
+    conversationId: input.conversationId,
+    userContentReference: input.contentReferences.userTurnId,
+    assistantContentReference: input.contentReferences.assistantResponseId
+  });
+
+  return appendConversationTurn({
+    conversationId: input.conversationId,
+    userMessage: input.userMessage,
+    assistantMessage: input.assistantMessage,
+    memoryContext: input.memoryContext
+  });
+}
+
 // Contract: GET /api/chat currently returns 501 until chat orchestration is implemented.
 export async function GET(request: NextRequest) {
   const { correlationId, log } = routeLogger(request);
@@ -125,6 +190,7 @@ export async function POST(request: NextRequest) {
     const recentTurns = getRecentConversationTurns(context.conversationId);
     const referenceResolution = resolveFollowUpReference(payload.message, recentTurns);
     const effectiveMessage = referenceResolution.resolvedMessage ?? payload.message;
+    const turnIdentifiers = buildTurnResponseIdentifiers(context.conversationId);
     const emergencyTriggerResult = detectEmergencyTriggers(effectiveMessage);
     const profileSummary = await fetchShowcaseProfileSummary(context.patientId, { delayMs: 0 });
     if (!profileSummary) {
@@ -142,17 +208,33 @@ export async function POST(request: NextRequest) {
         template: escalationResponse.template
       });
       const assistantMessage = minimizationGuard.assistantMessage;
-      const identifiers = buildTurnResponseIdentifiers(context.conversationId);
+      const ruleIds = emergencyTriggerResult.matches.map((match) => match.ruleId);
+      const matchedExpressions = emergencyTriggerResult.matches.map((match) => match.matchedExpression);
+
+      persistGuardrailEvaluation({
+        conversationId: context.conversationId,
+        patientId: context.patientId,
+        contextSnapshotRef: context.contextSnapshotRef,
+        evaluationName: "emergency_trigger",
+        triggered: true,
+          reason: "emergency_trigger_match",
+        ruleId: getFirstOrFallback(ruleIds, "ER-TRIGGER-UNKNOWN"),
+        ruleIds: ruleIds.length > 0 ? ruleIds : ["ER-TRIGGER-UNKNOWN"],
+        matchedExpressions: matchedExpressions.length > 0 ? matchedExpressions : [payload.message],
+        userTurnId: turnIdentifiers.userTurnId,
+        assistantResponseId: turnIdentifiers.assistantResponseId
+      });
+
       const activationEvent = persistGuardrailActivationEvent({
         conversationId: context.conversationId,
         patientId: context.patientId,
         contextSnapshotRef: context.contextSnapshotRef,
         triggerReason: "emergency_trigger_match",
-        ruleId: emergencyTriggerResult.matches[0]?.ruleId ?? "",
-        ruleIds: emergencyTriggerResult.matches.map((match) => match.ruleId),
-        matchedExpressions: emergencyTriggerResult.matches.map((match) => match.matchedExpression),
-        userTurnId: identifiers.userTurnId,
-        assistantResponseId: identifiers.assistantResponseId
+        ruleId: getFirstOrFallback(ruleIds, "ER-TRIGGER-UNKNOWN"),
+        ruleIds: ruleIds.length > 0 ? ruleIds : ["ER-TRIGGER-UNKNOWN"],
+        matchedExpressions: matchedExpressions.length > 0 ? matchedExpressions : [payload.message],
+        userTurnId: turnIdentifiers.userTurnId,
+        assistantResponseId: turnIdentifiers.assistantResponseId
       });
 
       log.info("chat.orchestration.bypass_decision", {
@@ -195,6 +277,18 @@ export async function POST(request: NextRequest) {
         assistantResponseId: activationEvent.assistantResponseId
       });
 
+      const turnCount = persistConversationTurnArtifacts({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        contentReferences: turnIdentifiers,
+        memoryContext: {
+          domain: "emergency",
+          entityReferences: ruleIds,
+          confidence: "high"
+        }
+      });
+
       const response = apiSuccess({
         conversationId: context.conversationId,
         patientId: context.patientId,
@@ -234,19 +328,8 @@ export async function POST(request: NextRequest) {
         turn: {
           userMessage: payload.message,
           assistantMessage,
-          userTurnId: identifiers.userTurnId,
-          assistantResponseId: identifiers.assistantResponseId
-        }
-      });
-
-      const turnCount = appendConversationTurn({
-        conversationId: context.conversationId,
-        userMessage: payload.message,
-        assistantMessage,
-        memoryContext: {
-          domain: "emergency",
-          entityReferences: emergencyTriggerResult.matches.map((match) => match.ruleId),
-          confidence: "high"
+          userTurnId: turnIdentifiers.userTurnId,
+          assistantResponseId: turnIdentifiers.assistantResponseId
         }
       });
 
@@ -279,6 +362,83 @@ export async function POST(request: NextRequest) {
       context.contextSnapshotRef
     );
 
+    persistGuardrailEvaluation({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      contextSnapshotRef: context.contextSnapshotRef,
+      evaluationName: "emergency_trigger",
+      triggered: emergencyTriggerResult.isEmergency,
+      reason: emergencyTriggerResult.isEmergency
+        ? "emergency_trigger_match"
+        : "no_emergency_trigger_detected",
+      ruleId: getFirstOrFallback(
+        emergencyTriggerResult.matches.map((match) => match.ruleId),
+        "ER-TRIGGER-UNKNOWN"
+      ),
+      ruleIds: emergencyTriggerResult.matches.length > 0
+        ? emergencyTriggerResult.matches.map((match) => match.ruleId)
+        : ["ER-TRIGGER-UNKNOWN"],
+      matchedExpressions: emergencyTriggerResult.matches.length > 0
+        ? emergencyTriggerResult.matches.map((match) => match.matchedExpression)
+        : [effectiveMessage],
+      userTurnId: turnIdentifiers.userTurnId,
+      assistantResponseId: turnIdentifiers.assistantResponseId
+    });
+
+    persistGuardrailEvaluation({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      contextSnapshotRef: context.contextSnapshotRef,
+      evaluationName: "diagnosis_boundary",
+      triggered: diagnosisBoundary.isDiagnosisIntent,
+      reason: diagnosisBoundary.triggerReason ?? "no_diagnosis_intent_detected",
+      ruleId: getFirstOrFallback(diagnosisBoundary.matchedRuleIds, "DX-BOUNDARY-UNKNOWN"),
+      ruleIds: diagnosisBoundary.matchedRuleIds.length > 0
+        ? diagnosisBoundary.matchedRuleIds
+        : ["DX-BOUNDARY-UNKNOWN"],
+      matchedExpressions: diagnosisBoundary.matchedSignals.length > 0
+        ? diagnosisBoundary.matchedSignals
+        : [effectiveMessage],
+      userTurnId: turnIdentifiers.userTurnId,
+      assistantResponseId: turnIdentifiers.assistantResponseId
+    });
+
+    persistGuardrailEvaluation({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      contextSnapshotRef: context.contextSnapshotRef,
+      evaluationName: "medication_boundary",
+      triggered: medicationBoundary.isMedicationBoundary,
+      reason: medicationBoundary.triggerReason ?? "no_medication_boundary_detected",
+      ruleId: getFirstOrFallback(medicationBoundary.matchedRuleIds, "MED-BOUNDARY-UNKNOWN"),
+      ruleIds: medicationBoundary.matchedRuleIds.length > 0
+        ? medicationBoundary.matchedRuleIds
+        : ["MED-BOUNDARY-UNKNOWN"],
+      matchedExpressions: medicationBoundary.matchedRuleIds.length > 0
+        ? medicationBoundary.matchedRuleIds
+        : [effectiveMessage],
+      userTurnId: turnIdentifiers.userTurnId,
+      assistantResponseId: turnIdentifiers.assistantResponseId
+    });
+
+    persistGuardrailEvaluation({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      contextSnapshotRef: context.contextSnapshotRef,
+      evaluationName: "lab_interpretation_boundary",
+      triggered: labBoundary.isLabInterpretationIntent,
+      reason: labBoundary.triggerReason ?? "no_lab_interpretation_detected",
+      ruleId: getFirstOrFallback(labBoundary.matchedRuleIds, "LAB-BOUNDARY-UNKNOWN"),
+      ruleIds: labBoundary.matchedRuleIds.length > 0
+        ? labBoundary.matchedRuleIds
+        : ["LAB-BOUNDARY-UNKNOWN"],
+      matchedExpressions: labBoundary.blockedPhrases.length > 0
+        ? labBoundary.blockedPhrases
+        : [effectiveMessage],
+      userTurnId: turnIdentifiers.userTurnId,
+      assistantResponseId: turnIdentifiers.assistantResponseId
+    });
+
     if (diagnosisBoundary.isDiagnosisIntent) {
       const assistantMessage = diagnosisBoundary.assistantMessage ??
         "I cannot diagnose conditions in chat.";
@@ -305,6 +465,18 @@ export async function POST(request: NextRequest) {
         handoff: diagnosisBoundary.handoff
       });
 
+      const turnCount = persistConversationTurnArtifacts({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        contentReferences: turnIdentifiers,
+        memoryContext: {
+          domain: "diagnosis-boundary",
+          entityReferences: diagnosisBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
+
       const response = apiSuccess({
         conversationId: context.conversationId,
         patientId: context.patientId,
@@ -326,17 +498,6 @@ export async function POST(request: NextRequest) {
         turn: {
           userMessage: payload.message,
           assistantMessage
-        }
-      });
-
-      const turnCount = appendConversationTurn({
-        conversationId: context.conversationId,
-        userMessage: payload.message,
-        assistantMessage,
-        memoryContext: {
-          domain: "diagnosis-boundary",
-          entityReferences: diagnosisBoundary.matchedRuleIds,
-          confidence: "high"
         }
       });
 
@@ -378,6 +539,17 @@ export async function POST(request: NextRequest) {
         contextSources: medicationBoundary.contextSourceRefs
       });
 
+      const turnCount = persistConversationTurnArtifacts({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        contentReferences: turnIdentifiers,
+        memoryContext: {
+          domain: "medication-boundary",
+          entityReferences: medicationBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
       const response = apiSuccess({
         conversationId: context.conversationId,
         patientId: context.patientId,
@@ -401,17 +573,6 @@ export async function POST(request: NextRequest) {
         turn: {
           userMessage: payload.message,
           assistantMessage
-        }
-      });
-
-      const turnCount = appendConversationTurn({
-        conversationId: context.conversationId,
-        userMessage: payload.message,
-        assistantMessage,
-        memoryContext: {
-          domain: "medication-boundary",
-          entityReferences: medicationBoundary.matchedRuleIds,
-          confidence: "high"
         }
       });
 
@@ -455,6 +616,18 @@ export async function POST(request: NextRequest) {
         correctionPath: labBoundary.correctionPath
       });
 
+
+      const turnCount = persistConversationTurnArtifacts({
+        conversationId: context.conversationId,
+        userMessage: payload.message,
+        assistantMessage,
+        contentReferences: turnIdentifiers,
+        memoryContext: {
+          domain: "lab-boundary",
+          entityReferences: labBoundary.matchedRuleIds,
+          confidence: "high"
+        }
+      });
       const response = apiSuccess({
         conversationId: context.conversationId,
         patientId: context.patientId,
@@ -480,17 +653,6 @@ export async function POST(request: NextRequest) {
         turn: {
           userMessage: payload.message,
           assistantMessage
-        }
-      });
-
-      const turnCount = appendConversationTurn({
-        conversationId: context.conversationId,
-        userMessage: payload.message,
-        assistantMessage,
-        memoryContext: {
-          domain: "lab-boundary",
-          entityReferences: labBoundary.matchedRuleIds,
-          confidence: "high"
         }
       });
 
@@ -590,6 +752,24 @@ export async function POST(request: NextRequest) {
       "Chat orchestration is scaffolded. Session and patient context propagation is active.";
 
     const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);
+
+    persistGuardrailEvaluation({
+      conversationId: context.conversationId,
+      patientId: context.patientId,
+      contextSnapshotRef: context.contextSnapshotRef,
+      evaluationName: "post_generation_guardrail",
+      triggered: postGenerationGuard.overrideApplied,
+      reason: postGenerationGuard.overrideReason ?? "passed",
+      ruleId: getFirstOrFallback(postGenerationGuard.matchedRuleIds, "PG-GUARD-000"),
+      ruleIds: postGenerationGuard.matchedRuleIds.length > 0
+        ? postGenerationGuard.matchedRuleIds
+        : ["PG-GUARD-000"],
+      matchedExpressions: postGenerationGuard.matchedRuleIds.length > 0
+        ? postGenerationGuard.matchedRuleIds
+        : [payload.message],
+      userTurnId: turnIdentifiers.userTurnId,
+      assistantResponseId: turnIdentifiers.assistantResponseId
+    });
 
     const consistencyReview = applyResponseConsistencyGuard({
       draftResponse: postGenerationGuard.finalResponse,
@@ -744,10 +924,11 @@ export async function POST(request: NextRequest) {
       }
     });
 
-    const turnCount = appendConversationTurn({
+    const turnCount = persistConversationTurnArtifacts({
       conversationId: context.conversationId,
       userMessage: payload.message,
       assistantMessage,
+      contentReferences: turnIdentifiers,
       memoryContext: {
         domain: responseDomain,
         entityReferences,

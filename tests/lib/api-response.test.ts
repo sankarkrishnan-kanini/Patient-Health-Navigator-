@@ -41,4 +41,28 @@ describe("api-response utility", () => {
       }
     });
   });
+
+  it("includes structured details when provided", async () => {
+    const response = apiError("VALIDATION_FAILED", "Validation failed.", 400, {
+      fields: [
+        {
+          field: "conversationId",
+          issue: "missing",
+          message: "conversationId is required."
+        }
+      ]
+    });
+    const body = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(body.error.details).toEqual({
+      fields: [
+        {
+          field: "conversationId",
+          issue: "missing",
+          message: "conversationId is required."
+        }
+      ]
+    });
+  });
 });

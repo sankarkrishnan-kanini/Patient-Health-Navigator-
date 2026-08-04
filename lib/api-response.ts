@@ -10,6 +10,7 @@ type ErrorBody = {
   error: {
     code: string;
     message: string;
+    details?: unknown;
   };
 };
 
@@ -23,13 +24,19 @@ export function apiSuccess<T>(data: T, status = 200): NextResponse<SuccessBody<T
   );
 }
 
-export function apiError(code: string, message: string, status: number): NextResponse<ErrorBody> {
+export function apiError(
+  code: string,
+  message: string,
+  status: number,
+  details?: unknown
+): NextResponse<ErrorBody> {
   return NextResponse.json(
     {
       success: false,
       error: {
         code,
-        message
+        message,
+        ...(details === undefined ? {} : { details })
       }
     },
     { status }
