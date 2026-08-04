@@ -307,8 +307,8 @@ function createSensitivePayload(
 
 function createGuardrailEvaluationEvent(
   input: GuardrailEvaluationEventInput,
-  eventType: GuardrailEvaluationEvent["eventType"] = "guardrail_evaluation"
-): GuardrailAuditStoredEvaluationEvent {
+  eventType: GuardrailAuditEvent["eventType"] = "guardrail_evaluation"
+): GuardrailAuditStoredEvent {
   return {
     eventId: nextEventId(),
     eventType,
@@ -327,7 +327,7 @@ function createGuardrailEvaluationEvent(
       userTurnId: normalizeOptionalString(input.userTurnId),
       assistantResponseId: normalizeOptionalString(input.assistantResponseId)
     })
-  };
+  } as GuardrailAuditStoredEvent;
 }
 
 export function persistGuardrailActivationEvent(
