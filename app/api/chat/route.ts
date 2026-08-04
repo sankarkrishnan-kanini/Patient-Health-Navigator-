@@ -679,7 +679,7 @@ export async function POST(request: NextRequest) {
       matchedRuleIds: []
     });
 
-    const modelDraftResponse = invokeModelGeneration({
+    const modelDraftResponse = await invokeModelGeneration({
       conversationId: context.conversationId,
       patientId: context.patientId,
       message: effectiveMessage
