@@ -21,6 +21,7 @@ import json
 import os
 import re
 import datetime
+import threading
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _config import load_knowledge_paths
@@ -182,11 +183,24 @@ def write_pending_marker(file_path: str, source_type: str, project_dir: str):
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
 
+def read_stdin_with_timeout(timeout=1.0):
+    """Read stdin but never block past `timeout` seconds (some IDE hook
+    runners don't close stdin, which would otherwise hang until the
+    IDE's own hook timeout kills the process and treats it as errored)."""
+    result = {}
+    def _read():
+        result["data"] = sys.stdin.read()
+    t = threading.Thread(target=_read, daemon=True)
+    t.start()
+    t.join(timeout)
+    return result.get("data", "")
+
+
 def main():
+    raw = read_stdin_with_timeout()
     try:
-        raw = sys.stdin.read()
         payload = json.loads(raw) if raw.strip() else {}
-    except (json.JSONDecodeError, Exception):
+    except json.JSONDecodeError:
         sys.exit(0)  # Never block
 
     tool_name = extract_tool_name(payload)
