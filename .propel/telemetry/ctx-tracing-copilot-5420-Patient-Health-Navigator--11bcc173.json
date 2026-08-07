@@ -1,0 +1,47 @@
+{
+  "schema_url": "https://opentelemetry.io/schemas/1.36.0",
+  "resource": {
+    "service.name": "propeliq.ctx-tracker",
+    "gen_ai.framework": "copilot",
+    "user.name": "MaegeshSuresh",
+    "user.full_name": "Maegesh-16",
+    "user.id": "MaegeshSuresh",
+    "user.email": "maegesh.suresh@kanini.com",
+    "host.name": "KANINI-LTP-1054",
+    "os.type": "windows",
+    "os.version": "11",
+    "host.arch": "AMD64"
+  },
+  "gen_ai.conversation.id": "copilot-5420-Patient-Health-Navigator--11bcc173",
+  "gen_ai.provider.name": "openai",
+  "gen_ai.operation.name": "chat",
+  "gen_ai.request.model": null,
+  "gen_ai.system_instructions": [],
+  "context_window": {
+    "limit_tokens": 128000,
+    "counting_method": "estimated"
+  },
+  "created_at": "2026-08-07T14:39:54",
+  "updated_at": "2026-08-07T14:39:54",
+  "_cumulative_input_tokens": 182,
+  "turns": [
+    {
+      "turn_id": 1,
+      "event.name": "gen_ai.client.inference.operation.details",
+      "start_time": "2026-08-07T14:39:54",
+      "gen_ai.operation.name": "chat",
+      "gen_ai.input.messages": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "content": "onsole Error[](https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code)\r\nConversation session was not found.\r\n\r\napp\\chat\\page.tsx (281:17) @ eval\r\n\r\n```\r\n  279 |         const data = await res.json();  280 |         if (!res.ok) {> 281 |           throw new Error(data.error?.message || \"Failed to get response\");      |                 ^  282 |         }  283 |         return data;  284 |       })\r\n```\r\n\r\nCall Stack1\r\n\r\neval\r\napp\\chat\\page.tsx (281:17)\r\n\r\n\r\n1. YouAug 07, 2026, 02:39 PMhi\r\n2. AssistantAug 07, 2026, 02:39 PMError: Conversation session was not found.\r\n3. YouAug 07, 2026, 02:39 PMWhat is an AI\r\n4. AssistantAug 07, 2026, 02:39 PMError: Conversation session was not found.\r\n"
+            }
+          ]
+        }
+      ],
+      "gen_ai.usage.input_tokens": 182
+    }
+  ]
+}

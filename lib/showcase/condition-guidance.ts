@@ -1,7 +1,7 @@
 import type { PatientProfileSummary, ProfileCondition } from "@/lib/showcase/profile-summary";
 
 const CONDITION_INTENT_PATTERN =
-  /\b(condition|conditions|diagnosis|diagnosed|disease|illness|symptom|symptoms|explain|what is)\b/i;
+  /\b(condition|conditions|diagnosis|diagnosed|disease|illness|symptom|symptoms|fever|cough|pain|headache|nausea|explain|what is)\b/i;
 
 const GENERIC_REQUEST_TERMS = new Set([
   "condition",
