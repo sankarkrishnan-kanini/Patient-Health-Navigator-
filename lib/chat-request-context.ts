@@ -4,7 +4,7 @@ import {
   getConversationSessionById,
   type SessionBinding
 } from "@/lib/chat-session";
-import { getShowcasePatientById } from "@/lib/showcase/patient-options";
+import { fetchDynamicProfileSummary } from "@/lib/showcase/profile-data";
 
 export type ChatRequestContext = {
   conversationId: string;
@@ -18,7 +18,7 @@ function expectedSnapshotRef(patientId: string): string {
   return `showcase-profile-summary:${patientId}`;
 }
 
-function validateBinding(binding: SessionBinding | null): asserts binding is SessionBinding {
+async function validateBinding(binding: SessionBinding | null): Promise<SessionBinding> {
   if (!binding) {
     throw new AppError(
       "SESSION_BINDING_MISSING",
@@ -39,7 +39,8 @@ function validateBinding(binding: SessionBinding | null): asserts binding is Ses
     );
   }
 
-  if (!getShowcasePatientById(binding.patientId)) {
+  const profile = await fetchDynamicProfileSummary(binding.patientId);
+  if (!profile) {
     throw new AppError(
       "SESSION_BINDING_STALE",
       "Session binding points to a patient that is no longer available.",
@@ -54,9 +55,11 @@ function validateBinding(binding: SessionBinding | null): asserts binding is Ses
       409
     );
   }
+
+  return binding;
 }
 
-export function resolveChatRequestContext(conversationId: string): ChatRequestContext {
+export async function resolveChatRequestContext(conversationId: string): Promise<ChatRequestContext> {
   const normalizedConversationId = conversationId.trim();
   if (normalizedConversationId.length === 0) {
     throw new AppError("MISSING_CONVERSATION_ID", "conversationId is required for chat requests.", 400);
@@ -71,13 +74,13 @@ export function resolveChatRequestContext(conversationId: string): ChatRequestCo
   }
 
   const session = getConversationSessionById(normalizedConversationId);
-  validateBinding(session.binding);
+  const binding = await validateBinding(session.binding);
 
   return {
     conversationId: session.conversationId,
-    patientId: session.binding.patientId,
-    contextSnapshotRef: session.binding.contextSnapshotRef,
-    contextSnapshotVersion: session.binding.contextSnapshotVersion,
+    patientId: binding.patientId,
+    contextSnapshotRef: binding.contextSnapshotRef,
+    contextSnapshotVersion: binding.contextSnapshotVersion,
     sessionUpdatedAt: session.updatedAt
   };
 }

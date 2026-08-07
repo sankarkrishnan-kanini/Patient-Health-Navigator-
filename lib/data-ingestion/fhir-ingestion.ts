@@ -1,4 +1,4 @@
-import { cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
+import { appendFile, cp, mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 export const REQUIRED_FHIR_RESOURCE_TYPES = [
@@ -191,9 +191,7 @@ async function parseSourceFile(sourceFile: string): Promise<ParsedSource> {
 }
 
 async function appendNdjsonLine(filePath: string, record: unknown): Promise<void> {
-  const existing = await readFile(filePath, "utf8").catch(() => "");
-  const nextContent = `${existing}${JSON.stringify(record)}\n`;
-  await writeFile(filePath, nextContent, "utf8");
+  await appendFile(filePath, `${JSON.stringify(record)}\n`, "utf8");
 }
 
 function resourceKey(resourceType: RequiredFhirResourceType, resourceId: string): string {
@@ -205,11 +203,22 @@ async function quarantineFile(
   quarantineRoot: string,
   reason: string,
   runId: string,
-  failures: IngestionFailureRecord[]
+  failures: IngestionFailureRecord[],
+  copiedToQuarantine: Set<string>
 ): Promise<void> {
   const fileName = path.basename(sourceFile);
   const targetPath = path.join(quarantineRoot, fileName);
-  await cp(sourceFile, targetPath, { force: true });
+  if (!copiedToQuarantine.has(sourceFile)) {
+    try {
+      await cp(sourceFile, targetPath, { force: true });
+      copiedToQuarantine.add(sourceFile);
+    } catch (error) {
+      const copyError = error as NodeJS.ErrnoException;
+      if (copyError.code !== "EBUSY" && copyError.code !== "EPERM") {
+        throw error;
+      }
+    }
+  }
 
   const failure: IngestionFailureRecord = {
     runId,
@@ -239,22 +248,31 @@ export async function ingestFhirBatch(options: FhirIngestionOptions): Promise<Fh
   const failures: IngestionFailureRecord[] = [];
   const duplicateEvents: IngestionDuplicateEvent[] = [];
   const seenResourceKeys = new Set<string>();
+  const copiedToQuarantine = new Set<string>();
+  const seenFailureKeys = new Set<string>();
 
   const files = await listJsonFiles(options.inputPath);
 
   for (const file of files) {
     try {
       const parsedSource = await parseSourceFile(file);
+      const stagedLinesByType = new Map<RequiredFhirResourceType, string[]>();
 
       for (const resource of parsedSource.resources) {
         if (!resourceTypeSet.has(resource.resourceType as RequiredFhirResourceType)) {
-          await quarantineFile(
-            file,
-            quarantineDirectory,
-            `Unsupported resource type: ${resource.resourceType}`,
-            runId,
-            failures
-          );
+          const failureReason = `Unsupported resource type: ${resource.resourceType}`;
+          const failureKey = `${file}::${failureReason}`;
+          if (!seenFailureKeys.has(failureKey)) {
+            seenFailureKeys.add(failureKey);
+            await quarantineFile(
+              file,
+              quarantineDirectory,
+              failureReason,
+              runId,
+              failures,
+              copiedToQuarantine
+            );
+          }
 
           const knownType = resource.resourceType as RequiredFhirResourceType;
           if (resourceTypeSet.has(knownType)) {
@@ -291,13 +309,22 @@ export async function ingestFhirBatch(options: FhirIngestionOptions): Promise<Fh
         }
 
         seenResourceKeys.add(dedupKey);
-
-        await appendNdjsonLine(path.join(stagedDirectory, `${resourceType}.ndjson`), stagedRecord);
+        const existingLines = stagedLinesByType.get(resourceType) ?? [];
+        existingLines.push(JSON.stringify(stagedRecord));
+        stagedLinesByType.set(resourceType, existingLines);
         resourceCounts[resourceType].success += 1;
+      }
+
+      for (const [resourceType, lines] of stagedLinesByType.entries()) {
+        if (lines.length === 0) {
+          continue;
+        }
+
+        await appendFile(path.join(stagedDirectory, `${resourceType}.ndjson`), `${lines.join("\n")}\n`, "utf8");
       }
     } catch (error) {
       const reason = error instanceof Error ? error.message : "Unknown ingestion failure.";
-      await quarantineFile(file, quarantineDirectory, reason, runId, failures);
+      await quarantineFile(file, quarantineDirectory, reason, runId, failures, copiedToQuarantine);
     }
   }
 
