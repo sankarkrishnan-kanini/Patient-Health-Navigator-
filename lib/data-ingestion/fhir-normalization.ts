@@ -392,8 +392,19 @@ function referencePatientId(value: unknown): string | null {
     return null;
   }
 
+  // Synthea transaction bundles commonly reference resources as urn:uuid:<id>.
+  if (reference.startsWith("urn:uuid:")) {
+    const urnId = reference.slice("urn:uuid:".length).trim();
+    return urnId.length > 0 ? urnId : null;
+  }
+
   const parts = reference.split("/");
-  return parts.length >= 2 ? parts[parts.length - 1] : null;
+  if (parts.length >= 2) {
+    return parts[parts.length - 1] || null;
+  }
+
+  // Fallback for plain id-style references.
+  return reference.trim().length > 0 ? reference.trim() : null;
 }
 
 function isoNow(): string {

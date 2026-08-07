@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const payload = await parseChatRequestPayload(request);
-    const context = resolveChatRequestContext(payload.conversationId);
+    const context = await resolveChatRequestContext(payload.conversationId);
     const recentTurns = getRecentConversationTurns(context.conversationId);
     const referenceResolution = resolveFollowUpReference(payload.message, recentTurns);
     const effectiveMessage = referenceResolution.resolvedMessage ?? payload.message;

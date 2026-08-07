@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
+import { readdirSync, statSync } from "node:fs";
+import path from "node:path";
 import { AppError } from "@/lib/errors";
-import { getShowcasePatientById } from "@/lib/showcase/patient-options";
 
 export const CONVERSATION_ID_FORMAT = "conv_<YYYYMMDDTHHMMSSZ>_<12hex>";
 export const CONVERSATION_ID_REGEX = /^conv_\d{8}T\d{6}Z_[a-f0-9]{12}$/;
@@ -74,6 +75,58 @@ export const DEFAULT_TURN_MEMORY_WINDOW = 10;
 const sessionStore = new Map<string, ConversationSessionMetadata>();
 const turnMemoryStore = new Map<string, ConversationTurnRecord[]>();
 
+function readDynamicPatientIdsFromNormalizedStore(): Set<string> {
+  const patientIds = new Set<string>();
+  const normalizedRoot = path.join(
+    process.cwd(),
+    ".propel",
+    "context",
+    "data",
+    "normalized",
+    "patient-context"
+  );
+
+  let latestPatientsDirectory: string | null = null;
+  let latestTimestamp = -1;
+
+  try {
+    const runEntries = readdirSync(normalizedRoot, { withFileTypes: true });
+    for (const runEntry of runEntries) {
+      if (!runEntry.isDirectory()) {
+        continue;
+      }
+
+      const patientsDirectory = path.join(normalizedRoot, runEntry.name, "patients");
+      const stats = statSync(patientsDirectory, { throwIfNoEntry: false });
+      if (!stats || !stats.isDirectory()) {
+        continue;
+      }
+
+      if (stats.mtimeMs > latestTimestamp) {
+        latestTimestamp = stats.mtimeMs;
+        latestPatientsDirectory = patientsDirectory;
+      }
+    }
+
+    if (!latestPatientsDirectory) {
+      return patientIds;
+    }
+
+    const patientFiles = readdirSync(latestPatientsDirectory, { withFileTypes: true });
+    for (const patientFile of patientFiles) {
+      if (!patientFile.isFile() || !patientFile.name.toLowerCase().endsWith(".json")) {
+        continue;
+      }
+
+      patientIds.add(patientFile.name.slice(0, -5));
+    }
+  } catch {
+    return patientIds;
+  }
+
+  return patientIds;
+}
+
 function ensureNonEmptyString(value: string, fieldName: string): string {
   const normalized = value.trim();
   if (normalized.length === 0) {
@@ -84,13 +137,16 @@ function ensureNonEmptyString(value: string, fieldName: string): string {
 }
 
 function assertPatientExists(patientId: string): void {
-  if (!getShowcasePatientById(patientId)) {
-    throw new AppError(
-      "INVALID_PATIENT_ID",
-      `selectedPatientId '${patientId}' is not available in the showcase dataset.`,
-      400
-    );
+  const dynamicPatientIds = readDynamicPatientIdsFromNormalizedStore();
+  if (dynamicPatientIds.has(patientId)) {
+    return;
   }
+
+  throw new AppError(
+    "INVALID_PATIENT_ID",
+    `selectedPatientId '${patientId}' is not available in the showcase dataset.`,
+    400
+  );
 }
 
 function createBindingFromPatient(patientId: string): SessionBinding {
