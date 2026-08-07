@@ -3,12 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { PatientSelector } from "@/app/chat/_components/patient-selector";
 import { ProfileSummaryPanel } from "@/app/chat/_components/profile-summary-panel";
+import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
 import {
-  getShowcasePatientById,
-  SHOWCASE_PATIENT_OPTIONS
-} from "@/lib/showcase/patient-options";
-import {
-  fetchShowcaseProfileSummary,
   type PatientProfileSummary
 } from "@/lib/showcase/profile-summary";
 import { getChatGateState } from "@/lib/showcase/chat-gating";
@@ -154,6 +150,7 @@ function parseStoredTranscript(serialized: string | null): StoredTranscript | nu
 }
 
 export default function ChatPage() {
+  const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [summary, setSummary] = useState<PatientProfileSummary | null>(null);
@@ -167,12 +164,12 @@ export default function ChatPage() {
 
   useEffect(() => {
     const stored = sessionStorage.getItem(CHAT_SESSION_PROFILE_KEY);
-    if (stored && getShowcasePatientById(stored)) {
+    if (stored) {
       setConfirmedProfileId(stored);
     }
 
     const storedTranscript = parseStoredTranscript(sessionStorage.getItem(CHAT_TRANSCRIPT_KEY));
-    if (!storedTranscript || !getShowcasePatientById(storedTranscript.profileId)) {
+    if (!storedTranscript) {
       return;
     }
 
@@ -182,6 +179,40 @@ export default function ChatPage() {
       -1
     );
     setNextTurnSequence(maxSequence + 1);
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    async function loadPatientOptions() {
+      try {
+        const response = await fetch("/api/patient-profile/options", { cache: "no-store" });
+        const body = await response.json();
+
+        if (!response.ok || !body?.data?.options || !Array.isArray(body.data.options)) {
+          return;
+        }
+
+        if (isCancelled) {
+          return;
+        }
+
+        const options = body.data.options as ShowcasePatientOption[];
+        if (options.length > 0) {
+          setPatientOptions(options);
+        }
+      } catch {
+        if (!isCancelled) {
+          setPatientOptions([]);
+        }
+      }
+    }
+
+    void loadPatientOptions();
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -207,8 +238,8 @@ export default function ChatPage() {
       return null;
     }
 
-    return getShowcasePatientById(confirmedProfileId) ?? null;
-  }, [confirmedProfileId]);
+    return patientOptions.find((option) => option.profileId === confirmedProfileId) ?? null;
+  }, [confirmedProfileId, patientOptions]);
 
   function handleConfirmSelection(profileId: string): void {
     if (profileId !== confirmedProfileId) {
@@ -283,8 +314,16 @@ export default function ChatPage() {
           throw new Error("SIMULATED_PROFILE_LOAD_FAILURE");
         }
 
-        const payload = await fetchShowcaseProfileSummary(profileId);
+        const response = await fetch(
+          `/api/patient-profile?profileId=${encodeURIComponent(profileId)}`,
+          { cache: "no-store" }
+        );
+        const body = await response.json();
+        if (!response.ok) {
+          throw new Error(body?.error?.message ?? "PROFILE_SUMMARY_NOT_FOUND");
+        }
 
+        const payload = body?.data?.summary as PatientProfileSummary | undefined;
         if (!payload) {
           throw new Error("PROFILE_SUMMARY_NOT_FOUND");
         }
@@ -449,7 +488,7 @@ export default function ChatPage() {
       </p>
 
       <PatientSelector
-        options={SHOWCASE_PATIENT_OPTIONS}
+        options={patientOptions}
         confirmedProfileId={confirmedProfileId}
         onConfirmSelection={handleConfirmSelection}
       />
