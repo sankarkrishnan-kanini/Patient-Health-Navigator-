@@ -51,15 +51,59 @@ const NORMALIZED_PATIENT_CONTEXT_ROOT = path.join(
   "patient-context"
 );
 
+/**
+ * Translate medical condition labels to patient-friendly versions
+ * Removes SNOMED-style suffixes like "(finding)", "(disorder)"
+ * Simplifies medical qualifiers like "Localized, primary" → cleaner form
+ */
+function translateConditionLabel(rawLabel: string): string {
+  if (!rawLabel) return "Unknown condition";
+
+  const cleaned = rawLabel
+    // Remove SNOMED type suffixes
+    .replace(/\s*\(finding\)\s*$/i, "")
+    .replace(/\s*\(disorder\)\s*$/i, "")
+    .replace(/\s*\(condition\)\s*$/i, "")
+    .replace(/\s*\(event\)\s*$/i, "")
+    // Remove common medical qualifiers
+    .replace(/^Localized,\s*/i, "")
+    .replace(/^Generalized,\s*/i, "")
+    .replace(/primary\s+/i, "")
+    .replace(/secondary\s+/i, "")
+    .replace(/chronic\s+/i, "Chronic ")
+    .replace(/acute\s+/i, "Acute ")
+    .trim();
+
+  return cleaned.length > 0 ? cleaned : "Unknown condition";
+}
+
 function toProfileConditions(conditions: NormalizedCondition[] | undefined): ProfileCondition[] {
+  // Filter out non-clinical SNOMED findings and other non-medical data
+  const nonClinicalPatterns = [
+    /finding\)$/i,           // "... (finding)" - sociodemographic data
+    /employment/i,           // Employment status
+    /education/i,            // Education level
+    /criminal/i,             // Legal history
+    /living arrangement/i,   // Social history
+    /lifestyle/i,            // Lifestyle factors
+    /social/i                // Social factors
+  ];
+
   return (conditions ?? [])
     .filter((condition) => {
       const status = condition.clinicalStatus?.toLowerCase();
-      return !status || status === "active";
+      const isActive = !status || status === "active";
+      
+      // Check if it's a non-clinical finding
+      const isNonClinical = nonClinicalPatterns.some(pattern =>
+        pattern.test(condition.codeText || "")
+      );
+      
+      return isActive && !isNonClinical;
     })
     .map((condition) => ({
       conditionId: condition.conditionId,
-      label: condition.codeText || "Unknown condition"
+      label: translateConditionLabel(condition.codeText || "Unknown condition")
     }));
 }
 
@@ -78,19 +122,30 @@ function toProfileMedications(medications: NormalizedMedication[] | undefined): 
 }
 
 function toProfileCareTasks(careTasks: NormalizedCareTask[] | undefined): ProfileCareTask[] {
-  return (careTasks ?? []).map((task) => ({
-    carePlanId: task.carePlanId,
-    description: task.description,
-    status: task.status
-  }));
+  return (careTasks ?? [])
+    .filter((task) => {
+      // Filter out placeholder/unspecified tasks
+      const description = (task.description || "").toLowerCase().trim();
+      return description.length > 0 && !description.includes("unspecified");
+    })
+    .map((task) => ({
+      carePlanId: task.carePlanId,
+      description: task.description,
+      status: task.status
+    }));
 }
 
 function toProfileVisits(visits: NormalizedAppointment[] | undefined): ProfileVisit[] {
-  return (visits ?? []).map((visit) => ({
-    encounterId: visit.encounterId,
-    status: visit.status,
-    start: visit.start ?? null
-  }));
+  return (visits ?? [])
+    .filter((visit) => {
+      // Filter out visits without scheduled dates (upcoming only)
+      return visit.start !== null && visit.start !== undefined;
+    })
+    .map((visit) => ({
+      encounterId: visit.encounterId,
+      status: visit.status,
+      start: visit.start ?? null
+    }));
 }
 
 function toPatientProfileSummary(context: NormalizedPatientContext): PatientProfileSummary {
