@@ -756,14 +756,17 @@ export async function POST(request: NextRequest) {
             ? medicationGuidance.medicationsUsed.map((medication) => medication.name)
             : [];
 
-    const draftAssistantMessage =
-      resolvedModelDraftResponse ??
+    const groundedAssistantMessage =
       referenceResolution.fallbackMessage ??
       diagnosisBoundary.assistantMessage ??
       lifestyleGuidance.assistantMessage ??
       carePlanAppointmentGuidance.assistantMessage ??
       conditionGuidance.assistantMessage ??
-      medicationGuidance.assistantMessage ??
+      medicationGuidance.assistantMessage;
+
+    const draftAssistantMessage =
+      groundedAssistantMessage ??
+      resolvedModelDraftResponse ??
       buildGuardrailConstraintResponse();
 
     const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);
