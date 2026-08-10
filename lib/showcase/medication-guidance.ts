@@ -10,7 +10,7 @@ import {
 } from "@/lib/showcase/medical-knowledge-base";
 
 const MEDICATION_INTENT_PATTERN =
-  /\b(medication|medications|medicine|meds|pill|pills|prescription|prescriptions|take|taking|dose|dosing|schedule|what is)\b/i;
+  /\b(medication|medications|medicine|meds|pill|pills|prescription|prescriptions|take|taking|dose|dosing|schedule|what is|what does|does it|how does|why do|benefits|purpose|function|work)\b/i;
 
 type MedicationContext = {
   name: string;
@@ -27,6 +27,24 @@ export type MedicationGuidanceResult = {
   interactionWarnings: MedicationInteractionCheck[];
   interactionWarningMessage: string | null;
 };
+
+function extractDrugName(medicationFullName: string): string {
+  // Extract just the drug name from formats like:
+  // "Acetaminophen 325 MG Oral Tablet [Tylenol]"
+  // "Aspirin 81 MG Oral Tablet"
+  // "Metformin [Glumetza]"
+  
+  const normalized = medicationFullName.trim();
+  
+  // Remove bracketed brand names: [Tylenol] -> ""
+  const cleaned = normalized.replace(/\s*\[[^\]]*\]\s*/g, " ");
+  
+  // Extract just the first word or two (the drug name, not dosage/form)
+  // "Acetaminophen 325 MG" -> "Acetaminophen"
+  const match = cleaned.match(/^([a-zA-Z]+(?:\s+[a-zA-Z]+)?)/);
+  
+  return match ? match[1].trim() : normalized;
+}
 
 function hasMedicationIntent(message: string): boolean {
   return MEDICATION_INTENT_PATTERN.test(message);
@@ -59,13 +77,14 @@ function extractRequestedMedication(message: string): string | null {
     .replace(/\s+/g, " ")
     .trim();
 
-  const matcher = /(?:what is|explain|about|tell me about)\s+([a-z0-9\s-]{3,100})/.exec(normalized);
+  // Match patterns like "what is", "what does", "how does", "why do", "explain", "about", etc.
+  const matcher = /(?:what is|what does|how does|why do|why does|does|explain|about|tell me about|tell me|info about)\s+([a-z0-9\s-]{3,100})/.exec(normalized);
   if (!matcher?.[1]) {
     return null;
   }
 
   const candidate = matcher[1]
-    .replace(/\b(medication|medicine|pill|please|for me)\b/g, "")
+    .replace(/\b(medication|medicine|pill|please|for me|do)\b/g, "")
     .replace(/\s+/g, " ")
     .trim();
 
@@ -141,6 +160,10 @@ function buildSpecificMedicationMessage(
 
     parts.push(``);
     parts.push(`*Information source: ${medicalContext.source || "FDA"}*`);
+  } else {
+    // Fallback when FDA API data unavailable
+    parts.push(``);
+    parts.push(`*Detailed medical information from FDA is temporarily unavailable. Check your prescription label or ask your care team for more details about this medication.*`);
   }
 
   parts.push(``);
@@ -261,7 +284,8 @@ export async function buildMedicationGuidance(
     );
 
     if (matchedMedication) {
-      const context = await getMedicationContext(matchedMedication.name);
+      const drugName = extractDrugName(matchedMedication.name);
+      const context = await getMedicationContext(drugName);
       return {
         isMedicationIntent: true,
         assistantMessage: buildSpecificMedicationMessage(matchedMedication, context),
@@ -287,7 +311,8 @@ export async function buildMedicationGuidance(
   // Fetch medical context from FDA DailyMed API for each medication (in parallel)
   const medicationContexts = new Map<string, MedicationKnowledge | null>();
   const contextPromises = profile.activeMedications.map(async (med) => {
-    const context = await getMedicationContext(med.name);
+    const drugName = extractDrugName(med.name);
+    const context = await getMedicationContext(drugName);
     medicationContexts.set(med.name, context);
   });
   
