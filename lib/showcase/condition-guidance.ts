@@ -1,4 +1,5 @@
 import type { PatientProfileSummary, ProfileCondition } from "@/lib/showcase/profile-summary";
+import { getConditionContext, type ConditionKnowledge } from "@/lib/showcase/medical-knowledge-base";
 
 const CONDITION_INTENT_PATTERN =
   /\b(condition|conditions|diagnosis|diagnosed|disease|illness|symptom|symptoms|fever|cough|pain|headache|nausea|explain|what is)\b/i;
@@ -86,8 +87,12 @@ function buildProfileMarkers(profile: PatientProfileSummary): ProfileMarkers {
   };
 }
 
-function buildConditionExplanation(condition: ProfileCondition): string {
-  return `${condition.label}: your active profile shows this as an ongoing health condition. In plain language, it means this is something your care team is monitoring over time.`;
+function buildConditionExplanation(condition: ProfileCondition, medicalContext: ConditionKnowledge | null): string {
+  if (medicalContext) {
+    return `**${condition.label}**\n- What it means: ${medicalContext.whatItMeans}\n- Why it matters: ${medicalContext.why_it_matters}\n- Source: ${medicalContext.source}`;
+  }
+  
+  return `${condition.label}: your active profile shows this as an ongoing health condition that your care team is monitoring over time.`;
 }
 
 function buildNoConditionFallback(profile: PatientProfileSummary): string {
@@ -98,22 +103,71 @@ function buildUnknownConditionBoundary(requestedCondition: string): string {
   return `I can explain conditions already listed in your active profile, but I do not see '${requestedCondition}' in your current condition list. I cannot confirm or diagnose new conditions in chat. If this concern is new, please contact your care team.`;
 }
 
-function buildLinkedConditionMessage(profile: PatientProfileSummary): string {
-  const lines = profile.activeConditions.map((condition) => `- ${buildConditionExplanation(condition)}`);
+function buildLinkedConditionMessage(profile: PatientProfileSummary, conditionContexts: Map<string, ConditionKnowledge | null>): string {
+  const conditionDetails = profile.activeConditions.map((condition) => {
+    const context = conditionContexts.get(condition.label);
+    if (context) {
+      return `- ${buildConditionExplanation(condition, context)}`;
+    }
+    return `- ${condition.label}`;
+  });
 
   return [
-    `Based on your active profile for ${profile.patientId}, here are your current conditions in plain language:`,
-    ...lines,
-    `Profile markers: ${profile.activeConditions.length} active condition(s), ${profile.careTasks.length} care task(s), ${profile.upcomingVisits.length} upcoming visit(s).`,
-    "I can explain any one of these in more detail using simpler language if you want."
+    `**Based on your active profile for ${profile.patientId}, here are your current conditions:**\n`,
+    conditionDetails.join("\n\n"),
+    `\nProfile markers: ${profile.activeConditions.length} active condition(s), ${profile.careTasks.length} care task(s), ${profile.upcomingVisits.length} upcoming visit(s).`,
+    "\nEach is an ongoing condition that your care team is monitoring. Ask me to explain any of these in simpler terms if helpful."
   ].join("\n");
 }
 
-export function buildConditionGuidance(
+function buildSpecificConditionMessage(
+  condition: ProfileCondition,
+  medicalContext: ConditionKnowledge | null
+): string {
+  if (medicalContext) {
+    const parts = [
+      `**${condition.label}**`,
+      ``,
+      `**What it means:**`,
+      medicalContext.whatItMeans || "This is an ongoing health condition listed in your profile.",
+      ``,
+      `**Why it matters:**`,
+      medicalContext.why_it_matters || "Your care team is monitoring this condition to keep you healthy.",
+    ];
+
+    if (medicalContext.whatToMonitor && medicalContext.whatToMonitor.length > 0) {
+      parts.push(``);
+      parts.push(`**What to monitor:**`);
+      medicalContext.whatToMonitor.forEach(item => parts.push(`• ${item}`));
+    }
+
+    if (medicalContext.lifestyle_tips && medicalContext.lifestyle_tips.length > 0) {
+      parts.push(``);
+      parts.push(`**Things that can help:**`);
+      medicalContext.lifestyle_tips.forEach(tip => parts.push(`${tip}`));
+    }
+
+    if (medicalContext.reassurance) {
+      parts.push(``);
+      parts.push(`**Good news:**`);
+      parts.push(medicalContext.reassurance);
+    }
+
+    parts.push(``);
+    parts.push(`*Information source: ${medicalContext.source || "Your care team"}*`);
+    parts.push(`*Ask your care team any specific questions about your care.*`);
+
+    return parts.join("\n");
+  }
+
+  return `${condition.label}: This is an ongoing health condition that your care team is monitoring. For more information about this condition, please ask your care team or request additional resources.`;
+}
+
+export async function buildConditionGuidance(
   message: string,
   profile: PatientProfileSummary,
   contextSnapshotRef: string
-): ConditionGuidanceResult {
+): Promise<ConditionGuidanceResult> {
   const profileMarkers = buildProfileMarkers(profile);
 
   if (!hasConditionIntent(message)) {
@@ -139,20 +193,50 @@ export function buildConditionGuidance(
   }
 
   const requestedCondition = extractRequestedCondition(message);
-  if (requestedCondition && !isConditionLinkedToProfile(requestedCondition, profile.activeConditions)) {
-    return {
-      isConditionIntent: true,
-      assistantMessage: buildUnknownConditionBoundary(requestedCondition),
-      conditionsUsed: profile.activeConditions.map(toConditionContext),
-      unknownRequestedCondition: requestedCondition,
-      profileMarkers,
-      contextSourceRefs: [contextSnapshotRef]
-    };
+  
+  // If specific condition requested, check if it's in the profile
+  if (requestedCondition) {
+    if (!isConditionLinkedToProfile(requestedCondition, profile.activeConditions)) {
+      return {
+        isConditionIntent: true,
+        assistantMessage: buildUnknownConditionBoundary(requestedCondition),
+        conditionsUsed: profile.activeConditions.map(toConditionContext),
+        unknownRequestedCondition: requestedCondition,
+        profileMarkers,
+        contextSourceRefs: [contextSnapshotRef]
+      };
+    }
+
+    // Find the matching condition and get detailed context
+    const matchedCondition = profile.activeConditions.find(
+      (condition) => normalizeText(condition.label).includes(normalizeText(requestedCondition))
+    );
+
+    if (matchedCondition) {
+      const context = await getConditionContext(matchedCondition.label);
+      return {
+        isConditionIntent: true,
+        assistantMessage: buildSpecificConditionMessage(matchedCondition, context),
+        conditionsUsed: [matchedCondition].map(toConditionContext),
+        unknownRequestedCondition: null,
+        profileMarkers,
+        contextSourceRefs: [contextSnapshotRef]
+      };
+    }
   }
+
+  // If no specific condition requested, list all conditions
+  const conditionContexts = new Map<string, ConditionKnowledge | null>();
+  const contextPromises = profile.activeConditions.map(async (condition) => {
+    const context = await getConditionContext(condition.label);
+    conditionContexts.set(condition.label, context);
+  });
+
+  await Promise.all(contextPromises);
 
   return {
     isConditionIntent: true,
-    assistantMessage: buildLinkedConditionMessage(profile),
+    assistantMessage: buildLinkedConditionMessage(profile, conditionContexts),
     conditionsUsed: profile.activeConditions.map(toConditionContext),
     unknownRequestedCondition: null,
     profileMarkers,

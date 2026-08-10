@@ -700,13 +700,13 @@ export async function POST(request: NextRequest) {
         ? null
         : modelDraftResponse;
 
-    const medicationGuidance = buildMedicationGuidance(
+    const medicationGuidance = await buildMedicationGuidance(
       effectiveMessage,
       profileSummary,
       context.contextSnapshotRef
     );
 
-    const conditionGuidance = buildConditionGuidance(
+    const conditionGuidance = await buildConditionGuidance(
       effectiveMessage,
       profileSummary,
       context.contextSnapshotRef
@@ -759,6 +759,7 @@ export async function POST(request: NextRequest) {
     const groundedAssistantMessage =
       referenceResolution.fallbackMessage ??
       diagnosisBoundary.assistantMessage ??
+
       lifestyleGuidance.assistantMessage ??
       carePlanAppointmentGuidance.assistantMessage ??
       conditionGuidance.assistantMessage ??
@@ -767,6 +768,7 @@ export async function POST(request: NextRequest) {
     const draftAssistantMessage =
       groundedAssistantMessage ??
       resolvedModelDraftResponse ??
+
       buildGuardrailConstraintResponse();
 
     const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);

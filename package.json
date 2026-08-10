@@ -21,6 +21,7 @@
     "migrate:mysql": "tsx scripts/mysql-migrate.ts"
   },
   "dependencies": {
+    "dotenv": "^17.4.2",
     "mysql2": "^3.23.2",
     "next": "^15.0.0",
     "openai": "^7.4.0",

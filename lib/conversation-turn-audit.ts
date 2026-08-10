@@ -1,5 +1,6 @@
 import { AppError } from "@/lib/errors";
 import { getConversationSessionById } from "@/lib/chat-session";
+import { persistConversationTurnAuditRecordsSafely } from "@/lib/mysql-persistence";
 import {
   createAuditValidationError,
   validateRequiredStringField,
@@ -141,6 +142,7 @@ export function appendConversationTurnAudit(
   const existingRecords = conversationTurnAuditStore.get(conversationId) ?? [];
   existingRecords.push(...records);
   conversationTurnAuditStore.set(conversationId, existingRecords);
+  persistConversationTurnAuditRecordsSafely(records);
   return records;
 }
 
