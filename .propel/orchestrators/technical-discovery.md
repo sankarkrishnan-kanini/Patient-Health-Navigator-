@@ -14,9 +14,10 @@ longer creates the spec itself.
 /artifact-resolver model
 /artifact-resolver figma_spec
 /artifact-resolver wireframe
+/artifact-resolver project_plan
 ```
 
-Build `pathContext` from all four results (same `{path, content_type,
+Build `pathContext` from all five results (same `{path, content_type,
 mcp_type, quality_threshold}` shape as `concept-validation.md`). Read `.propel/gate-policy.json`
 and pass its raw content as `gatePolicyJson` on `StartWorkflowRun` in Step 1
 only -- `CompleteRunStep` and `SubmitGateDecision` don't need it. Gate
@@ -55,9 +56,9 @@ is mandated" -- a `--approve=none` request will be partially honoured here,
 and discovering that mid-run is worse than hearing it in the gate plan
 summary.
 
-## Steps 2–9 — execute S1-S4 inline
+## Steps 2–9 — execute S1-S5 inline
 
-For each step (S1-S4):
+For each step (S1-S5):
 
 1. `GetNextRunStep(project, runId)` → fetch directive (includes previous step context)
 2. Execute step work inline (ask clarifications via AskUserQuestion as needed)
@@ -96,6 +97,9 @@ skipped, the server auto-skips it too without asking (you won't see it in a
   `reject` -- `SubmitGateDecision(skip)` at S3's (or an earlier step's) gate
   cleanly skips S3, and S4 is auto-skipped along with it since it depends on
   S3's output.
+- **S5 (create-project-plan)** declares no skip condition and only depends on
+  S1 -- it always runs and always gates, regardless of S2-S4 outcomes
+  (including if S3/S4 were skipped for a non-UI scope).
 
 ## Post-approval hooks
 
@@ -107,7 +111,7 @@ enforced as of this version, this is not merely advisory.
 
 ## Handoff
 
-On `status: "complete"`, hand off into `backlog-agent` per the response's
+On `status: "complete"`, hand off into `backlog-refinement` per the response's
 `handoffTo`. Note `handoffTo` is only ever populated when `status` is
 `"complete"` -- an aborted run's response never carries a handoff target.
 
@@ -117,8 +121,8 @@ On `status: "complete"`, hand off into `backlog-agent` per the response's
   never with empty `feedback` on a `reject`.
 - Never pass an `--approve=` value the user did not type -- and note that for
   this workflow specifically, it only partially matters: S1 is
-  policy-mandated and cannot be lowered regardless, but S2–S4 rely on the
+  policy-mandated and cannot be lowered regardless, but S2–S5 rely on the
   manifest default and CAN be lowered by an `--approve=` request.
-- `propel-technical-discovery-s1..s4` subagents must never call
+- `propel-technical-discovery-s1..s5` subagents must never call
   `SubmitGateDecision` -- they stop at `CompleteRunStep` and return its
   result. Gate handling stays with the parent session.

@@ -4,7 +4,7 @@ description: For POs/BAs. Transforms architect specs into backlog—epics (with 
 tools: ['execute/createAndRunTask', 'read/readFile', 'azure-mcp/search', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'todo', propel-sdlc/*]
 ---
 
-consult `.propel/orchestrators/backlog-agent.md` for the workflow steps.
+consult `.propel/orchestrators/backlog-refinement.md` for the workflow steps.
 
 ---
 
