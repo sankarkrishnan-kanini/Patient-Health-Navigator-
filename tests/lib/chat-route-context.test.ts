@@ -129,7 +129,7 @@ describe("POST /api/chat request context propagation", () => {
     expect(auditEntries[1].contentReference).toContain("asst_");
   });
 
-  it("applies plain-language controls to default scaffold response", async () => {
+  it("returns a guardrail constraint response when no model text is available", async () => {
     const started = await POST_SESSION(
       buildJsonRequest(
         "http://localhost:3030/api/chat/session",
@@ -154,12 +154,11 @@ describe("POST /api/chat request context propagation", () => {
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.turn.assistantMessage).toContain("workflow");
-    expect(body.data.turn.assistantMessage).toContain("details");
-    expect(body.data.turn.assistantMessage).toContain("passing");
+    expect(body.data.turn.assistantMessage).toContain("active profile");
+    expect(body.data.turn.assistantMessage).toContain("cannot add assumptions");
+    expect(body.data.turn.assistantMessage).toContain("listed medication, condition, appointment, or care plan item");
+    expect(body.data.turn.assistantMessage).not.toContain("scaffolded");
     expect(body.data.turn.assistantMessage).not.toContain("orchestration");
-    expect(body.data.turn.assistantMessage).not.toContain("propagation");
-    expect(body.data.turn.assistantMessage).not.toContain("Want me to restate this in simpler words?");
   });
 
   it("returns safe medication fallback when profile details are missing", async () => {
@@ -226,6 +225,36 @@ describe("POST /api/chat request context propagation", () => {
       "Want a shorter, plain-language explanation for one condition?"
     );
     expect(body.data.turn.assistantMessage).not.toContain("cannot diagnose new conditions");
+  });
+
+  it("routes symptom-only prompts to profile condition guidance", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-400" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "Fever"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.turn.assistantMessage).toContain("Condition A");
+    expect(body.data.turn.assistantMessage).toContain("active profile for patient-400");
+    expect(body.data.turn.assistantMessage).not.toContain("scaffolded");
   });
 
   it("routes diagnosis-intent prompts to a consistent safe boundary response", async () => {

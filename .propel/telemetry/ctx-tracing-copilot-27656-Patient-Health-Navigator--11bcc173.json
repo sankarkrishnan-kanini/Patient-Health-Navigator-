@@ -1,0 +1,47 @@
+{
+  "schema_url": "https://opentelemetry.io/schemas/1.36.0",
+  "resource": {
+    "service.name": "propeliq.ctx-tracker",
+    "gen_ai.framework": "copilot",
+    "user.name": "MaegeshSuresh",
+    "user.full_name": "Maegesh-16",
+    "user.id": "MaegeshSuresh",
+    "user.email": "maegesh.suresh@kanini.com",
+    "host.name": "KANINI-LTP-1054",
+    "os.type": "windows",
+    "os.version": "11",
+    "host.arch": "AMD64"
+  },
+  "gen_ai.conversation.id": "copilot-27656-Patient-Health-Navigator--11bcc173",
+  "gen_ai.provider.name": "openai",
+  "gen_ai.operation.name": "chat",
+  "gen_ai.request.model": null,
+  "gen_ai.system_instructions": [],
+  "context_window": {
+    "limit_tokens": 128000,
+    "counting_method": "estimated"
+  },
+  "created_at": "2026-08-07T14:43:50",
+  "updated_at": "2026-08-07T14:43:50",
+  "_cumulative_input_tokens": 387,
+  "turns": [
+    {
+      "turn_id": 1,
+      "event.name": "gen_ai.client.inference.operation.details",
+      "start_time": "2026-08-07T14:43:50",
+      "gen_ai.operation.name": "chat",
+      "gen_ai.input.messages": [
+        {
+          "role": "user",
+          "parts": [
+            {
+              "type": "text",
+              "content": "Runtime Error[](https://nextjs.org/docs/app/building-your-application/configuring/debugging#server-side-code)\r\nCannot find module './331.js'\r\nRequire stack:\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\.next\\server\\webpack-runtime.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\.next\\server\\pages\\_document.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\server\\require.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\server\\load-components.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\build\\utils.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\build\\swc\\options.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\build\\swc\\index.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\build\\next-config-ts\\transpile-config.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\server\\config.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\server\\next.js\r\n- C:\\Users\\MaegeshSuresh\\Desktop\\patient\\Patient-Health-Navigator-\\node_modules\\next\\dist\\server\\lib\\start-server.js\r\n\r\nShow More\r\n\r\nCall Stack41\r\n\r\nShow 39 ignore-listed frame(s)\r\n<unknown>\r\n.next\\server\\app\\chat\\page.js (2:7465)\r\nObject.<anonymous>\r\n.next\\server\\app\\chat\\page.js (2:7514)"
+            }
+          ]
+        }
+      ],
+      "gen_ai.usage.input_tokens": 387
+    }
+  ]
+}

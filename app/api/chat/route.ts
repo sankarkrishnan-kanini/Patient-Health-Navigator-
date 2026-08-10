@@ -20,7 +20,10 @@ import { buildLifestyleGuidance } from "@/lib/showcase/lifestyle-guidance";
 import { resolveFollowUpReference } from "@/lib/showcase/reference-resolution";
 import { applyResponseConsistencyGuard } from "@/lib/showcase/response-consistency-guard";
 import { detectEmergencyTriggers } from "@/lib/showcase/emergency-trigger-engine";
-import { invokeModelGeneration } from "@/lib/showcase/llm-orchestration";
+import {
+  NO_MODEL_PROVIDER_RESPONSE,
+  invokeModelGeneration
+} from "@/lib/showcase/llm-orchestration";
 import { buildEmergencyEscalationResponse } from "@/lib/showcase/emergency-escalation-template";
 import { applyEmergencyMinimizationGuard } from "@/lib/showcase/emergency-minimization-guard";
 import {
@@ -103,6 +106,14 @@ function buildTurnResponseIdentifiers(conversationId: string): {
 
 function getFirstOrFallback(values: string[], fallback: string): string {
   return values[0] ?? fallback;
+}
+
+function buildGuardrailConstraintResponse(): string {
+  return [
+    "I can only restate information already present in your active profile.",
+    "I cannot add assumptions or provide new clinical details that are not documented yet.",
+    "If you want, ask about a listed medication, condition, appointment, or care plan item and I will keep it within those guardrails."
+  ].join(" ");
 }
 
 function persistGuardrailEvaluation(input: {
@@ -684,6 +695,10 @@ export async function POST(request: NextRequest) {
       patientId: context.patientId,
       message: effectiveMessage
     });
+    const resolvedModelDraftResponse =
+      modelDraftResponse === NO_MODEL_PROVIDER_RESPONSE || modelDraftResponse.trim().length === 0
+        ? null
+        : modelDraftResponse;
 
     const medicationGuidance = buildMedicationGuidance(
       effectiveMessage,
@@ -742,14 +757,14 @@ export async function POST(request: NextRequest) {
             : [];
 
     const draftAssistantMessage =
-      modelDraftResponse ??
+      resolvedModelDraftResponse ??
       referenceResolution.fallbackMessage ??
       diagnosisBoundary.assistantMessage ??
       lifestyleGuidance.assistantMessage ??
       carePlanAppointmentGuidance.assistantMessage ??
       conditionGuidance.assistantMessage ??
       medicationGuidance.assistantMessage ??
-      "Chat orchestration is scaffolded. Session and patient context propagation is active.";
+      buildGuardrailConstraintResponse();
 
     const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);
 
