@@ -13,6 +13,7 @@ import {
   type GuardrailAuditEncryptedPayload,
   type GuardrailAuditSensitivePayload
 } from "@/lib/guardrail-audit-encryption";
+import { persistGuardrailEventSafely } from "@/lib/mysql-persistence";
 
 export type GuardrailActivationReason = "emergency_trigger_match";
 
@@ -366,6 +367,7 @@ export function persistGuardrailActivationEvent(
     ...storedEvent,
     triggerReason: input.triggerReason
   });
+  persistGuardrailEventSafely(storedEvent);
   return event;
 }
 
@@ -384,6 +386,7 @@ export function persistGuardrailEvaluationEvent(
   }
 
   guardrailEventStore.push(storedEvent);
+  persistGuardrailEventSafely(storedEvent);
   return decryptGuardrailAuditEvent(storedEvent) as GuardrailEvaluationEvent;
 }
 
