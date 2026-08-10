@@ -3,7 +3,8 @@ import type { PatientProfileSummary } from "@/lib/showcase/profile-summary";
 export type MedicationBoundaryCategory =
   | "dosage-change"
   | "stop-change"
-  | "dosage-and-stop-change";
+  | "dosage-and-stop-change"
+  | "dosage-instruction";
 
 export type MedicationBoundaryRule = {
   ruleId: string;
@@ -56,6 +57,29 @@ export const DEFAULT_MEDICATION_BOUNDARY_RULE_SET: MedicationBoundaryRuleSet = {
         "replace my medication",
         "skip my medication"
       ]
+    },
+    {
+      ruleId: "MED-BOUNDARY-DOSAGE-INSTRUCTION-001",
+      category: "dosage-instruction",
+      phrases: [
+        "what dosage",
+        "what dose",
+        "how much should i take",
+        "how many pills",
+        "how many tablets",
+        "how many capsules",
+        "how often should i take",
+        "how often do i take",
+        "what time should i take",
+        "when should i take",
+        "what is the dosage",
+        "what is the dose",
+        "what is the frequency",
+        "what is the schedule",
+        "how many mg",
+        "what strength",
+        "what amount"
+      ]
     }
   ]
 };
@@ -81,12 +105,17 @@ function buildMedicationBoundaryMessage(
   profile: PatientProfileSummary,
   category: MedicationBoundaryCategory
 ): string {
-  const categoryLine =
-    category === "dosage-change"
-      ? "I cannot provide dosage change instructions in chat."
-      : category === "stop-change"
-        ? "I cannot advise stopping or switching medication in chat."
-        : "I cannot provide dosage change or stop/switch medication instructions in chat.";
+  let categoryLine: string;
+
+  if (category === "dosage-change") {
+    categoryLine = "I cannot provide dosage change instructions in chat.";
+  } else if (category === "stop-change") {
+    categoryLine = "I cannot advise stopping or switching medication in chat.";
+  } else if (category === "dosage-instruction") {
+    categoryLine = "Your medication dosage and schedule are prescribed by your care team specifically for you. I can only explain what medications are, not provide dosage instructions.";
+  } else {
+    categoryLine = "I cannot provide dosage change or stop/switch medication instructions in chat.";
+  }
 
   const listedMeds = profile.activeMedications.length
     ? `Your active profile currently lists: ${profile.activeMedications
@@ -94,11 +123,17 @@ function buildMedicationBoundaryMessage(
         .join(", ")}.`
     : "Your active profile currently has no medications listed.";
 
+  const dosageNote = category === "dosage-instruction"
+    ? "Check your prescription label or packaging for your specific dose and schedule."
+    : "Please contact your care team now before making any medication changes.";
+
   return [
     categoryLine,
-    "Please contact your care team now before making any medication changes.",
+    dosageNote,
     listedMeds,
-    "I can explain what your current medication list says, but I cannot give treatment directives."
+    category === "dosage-instruction"
+      ? "I can explain what each medication does and why it's prescribed, but dosage decisions are between you and your care team."
+      : "I can explain what your current medication list says, but I cannot give treatment directives."
   ].join(" ");
 }
 
@@ -127,11 +162,19 @@ export function buildMedicationBoundary(
 
   const hasDose = matchedRules.some((rule) => rule.category === "dosage-change");
   const hasStop = matchedRules.some((rule) => rule.category === "stop-change");
-  const category: MedicationBoundaryCategory = hasDose && hasStop
-    ? "dosage-and-stop-change"
-    : hasDose
-      ? "dosage-change"
-      : "stop-change";
+  const hasDosageInstruction = matchedRules.some((rule) => rule.category === "dosage-instruction");
+
+  let category: MedicationBoundaryCategory;
+  
+  if (hasDosageInstruction) {
+    category = "dosage-instruction";
+  } else if (hasDose && hasStop) {
+    category = "dosage-and-stop-change";
+  } else if (hasDose) {
+    category = "dosage-change";
+  } else {
+    category = "stop-change";
+  }
 
   return {
     isMedicationBoundary: true,
