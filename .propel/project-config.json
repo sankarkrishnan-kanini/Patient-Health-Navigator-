@@ -84,7 +84,7 @@
             "contentType": "md",
             "mcpType": "local",
             "references": ["spec", "design", "model", "figma_spec", "designsystem", "findings_registry"],
-            "workflow": "/plan-development-task"
+            "workflow": "/plan-development-tasks"
         },
         "figma_spec": {
             "propelFileName": "figma_spec.md",
