@@ -59,10 +59,11 @@ function toApiRequestError(
   payload: { code?: string; message?: string },
   status: number
 ): ApiRequestError {
-  const error = new Error(payload.message || fallbackMessage) as ApiRequestError;
-  error.code = payload.code;
-  error.status = status;
-  return error;
+  const error = new Error(payload.message || fallbackMessage);
+  const apiError = error as ApiRequestError;
+  apiError.code = payload.code;
+  apiError.status = status;
+  return apiError;
 }
 
 async function createChatSessionForProfile(profileId: string): Promise<string> {
@@ -453,17 +454,19 @@ export default function ChatPage() {
       } catch (error) {
         const requestError = error as ApiRequestError;
         const shouldRecoverSession =
-          requestError.code === "SESSION_NOT_FOUND" &&
+          (requestError.code === "SESSION_NOT_FOUND" || requestError.status === 404) &&
           typeof confirmedProfileId === "string";
 
         if (shouldRecoverSession) {
           try {
+            console.warn("Session not found, recreating...", { code: requestError.code, status: requestError.status });
             const nextConversationId = await createChatSessionForProfile(confirmedProfileId);
             setConversationId(nextConversationId);
             const assistantMessage = await requestChatAssistantMessage(nextConversationId, nextMessage);
             appendAssistantTurn(assistantMessage);
             return;
           } catch (retryError) {
+            console.error("Session recovery failed:", retryError);
             appendErrorTurn(retryError);
             return;
           }
