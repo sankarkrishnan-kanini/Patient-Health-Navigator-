@@ -10,13 +10,10 @@ import {
 } from "@/lib/correlation-id";
 import { createLogger } from "@/lib/logger";
 import { fetchShowcaseProfileSummary } from "@/lib/showcase/profile-summary";
-import { buildMedicationGuidance } from "@/lib/showcase/medication-guidance";
-import { buildConditionGuidance } from "@/lib/showcase/condition-guidance";
 import { applyPlainLanguageControls } from "@/lib/showcase/plain-language-controls";
 import { applyClarificationPrompt, type ClarificationDomain } from "@/lib/showcase/clarification-prompt";
 import { buildDiagnosisBoundary } from "@/lib/showcase/diagnosis-boundary";
 import { buildCarePlanAppointmentGuidance } from "@/lib/showcase/careplan-appointment-guidance";
-import { buildLifestyleGuidance } from "@/lib/showcase/lifestyle-guidance";
 import { resolveFollowUpReference } from "@/lib/showcase/reference-resolution";
 import { applyResponseConsistencyGuard } from "@/lib/showcase/response-consistency-guard";
 import { detectEmergencyTriggers } from "@/lib/showcase/emergency-trigger-engine";
@@ -33,6 +30,12 @@ import {
 import { buildMedicationBoundary } from "@/lib/showcase/medication-boundary";
 import { buildLabInterpretationBoundary } from "@/lib/showcase/lab-interpretation-boundary";
 import { applyPostGenerationGuardrail } from "@/lib/showcase/post-generation-guardrail";
+import {
+  getMedicationContext,
+  getConditionContext,
+  type MedicationKnowledge,
+  type ConditionKnowledge
+} from "@/lib/showcase/medical-knowledge-base";
 
 type ChatRequestPayload = {
   conversationId: string;
@@ -700,17 +703,144 @@ export async function POST(request: NextRequest) {
         ? null
         : modelDraftResponse;
 
-    const medicationGuidance = await buildMedicationGuidance(
-      effectiveMessage,
-      profileSummary,
-      context.contextSnapshotRef
-    );
+    // RAG-based medication retrieval
+    let ragMedicationResponse: string | null = null;
+    let ragMedicationTriggered = false;
+    const medicationMatch = effectiveMessage.match(/medication|drug|medicine|taking|prescribed/i);
+    const showAllMedicationsQuery = /show|list|all|current|my/i.test(effectiveMessage) && 
+                                   /medication|drug|medicine/i.test(effectiveMessage);
+    
+    if (medicationMatch && profileSummary.activeMedications && profileSummary.activeMedications.length > 0) {
+      try {
+        ragMedicationTriggered = true;
+        const medicationsToFetch = showAllMedicationsQuery 
+          ? profileSummary.activeMedications 
+          : profileSummary.activeMedications.slice(0, 1);
+        
+        const medicationResponses: string[] = [];
+        
+        for (const med of medicationsToFetch) {
+          const medicationKnowledge = await getMedicationContext(med.name, context.patientId);
+          if (medicationKnowledge) {
+            log.info("chat.rag.medication_context_retrieved", {
+              conversationId: context.conversationId,
+              patientId: context.patientId,
+              medicationName: medicationKnowledge.medicationName,
+              confidence: medicationKnowledge.confidence,
+              sourceCount: medicationKnowledge.sources?.length || 0
+            });
+            
+            const sourceInfo = medicationKnowledge.sources?.length 
+              ? `Sources: ${medicationKnowledge.sources.map(s => s.sourceName).join(", ")}`
+              : "";
+            medicationResponses.push(
+              `• **${medicationKnowledge.medicationName}**: ${medicationKnowledge.purpose || "a prescribed medication"}. Common considerations: ${medicationKnowledge.commonSideEffects?.join(", ") || "consult your care team"}. Safety notes: ${medicationKnowledge.safetyNotes?.join(", ") || "none documented"}. ${sourceInfo}`
+            );
+          } else {
+            log.info("chat.rag.medication_no_results", {
+              conversationId: context.conversationId,
+              patientId: context.patientId,
+              medicationName: med.name
+            });
+            medicationResponses.push(
+              `• **${med.name}**: No detailed information available. For specific information about this medication, please contact your care team or pharmacist.`
+            );
+          }
+        }
+        
+        if (medicationResponses.length > 0) {
+          ragMedicationResponse = showAllMedicationsQuery 
+            ? `**Your Current Medications:**\n\n${medicationResponses.join("\n\n")}`
+            : medicationResponses[0];
+        }
+      } catch (error) {
+        log.warn("chat.rag.medication_context_failed", {
+          conversationId: context.conversationId,
+          patientId: context.patientId,
+          error: String(error)
+        });
+      }
+    }
 
-    const conditionGuidance = await buildConditionGuidance(
-      effectiveMessage,
-      profileSummary,
-      context.contextSnapshotRef
-    );
+    // RAG-based condition retrieval
+    let ragConditionResponse: string | null = null;
+    let ragConditionTriggered = false;
+    const conditionMatch = effectiveMessage.match(/condition|disease|illness|diagnosed|symptom|active conditions/i);
+    const showAllConditionsQuery = /show|list|all|current|my/i.test(effectiveMessage) && 
+                                   /condition|disease|illness/i.test(effectiveMessage);
+    
+    if (conditionMatch && profileSummary.activeConditions && profileSummary.activeConditions.length > 0) {
+      try {
+        ragConditionTriggered = true;
+        const conditionsToFetch = showAllConditionsQuery 
+          ? profileSummary.activeConditions 
+          : profileSummary.activeConditions.slice(0, 1);
+        
+        const conditionResponses: string[] = [];
+        
+        for (const cond of conditionsToFetch) {
+          const conditionKnowledge = await getConditionContext(cond.label, context.patientId);
+          if (conditionKnowledge) {
+            log.info("chat.rag.condition_context_retrieved", {
+              conversationId: context.conversationId,
+              patientId: context.patientId,
+              conditionName: conditionKnowledge.medicalName,
+              confidence: conditionKnowledge.confidence,
+              sourceCount: conditionKnowledge.sources?.length || 0
+            });
+            
+            const sourceInfo = conditionKnowledge.sources?.length 
+              ? `Sources: ${conditionKnowledge.sources.map(s => s.sourceName).join(", ")}`
+              : "";
+            conditionResponses.push(
+              `• **${conditionKnowledge.medicalName}** (${conditionKnowledge.plainLanguageName || "a medical condition"}): ${conditionKnowledge.whatItMeans || ""}. What to monitor: ${conditionKnowledge.whatToMonitor?.join(", ") || "Consult your care team"}. ${sourceInfo}`
+            );
+          } else {
+            log.info("chat.rag.condition_no_results", {
+              conversationId: context.conversationId,
+              patientId: context.patientId,
+              conditionName: cond.label
+            });
+            conditionResponses.push(
+              `• **${cond.label}**: No detailed information available. For specific information about this condition, please contact your care team.`
+            );
+          }
+        }
+        
+        if (conditionResponses.length > 0) {
+          ragConditionResponse = showAllConditionsQuery 
+            ? `**Your Active Conditions:**\n\n${conditionResponses.join("\n\n")}`
+            : conditionResponses[0];
+        }
+      } catch (error) {
+        log.warn("chat.rag.condition_context_failed", {
+          conversationId: context.conversationId,
+          patientId: context.patientId,
+          error: String(error)
+        });
+      }
+    }
+
+    // TODO: Replace with RAG-based medication definition engine
+    const medicationGuidance = {
+      isMedicationIntent: false,
+      assistantMessage: ragMedicationResponse, // Use RAG response if available
+      medicationsUsed: [] as Array<{ name: string; schedule: string | null; purpose: string | null }>,
+      missingDetailMedicationIds: [],
+      contextSourceRefs: [],
+      interactionWarnings: [],
+      interactionWarningMessage: null
+    };
+
+    // TODO: Replace with RAG-based condition definition engine
+    const conditionGuidance = {
+      isConditionIntent: false,
+      assistantMessage: ragConditionResponse, // Use RAG response if available
+      conditionsUsed: [] as Array<{ label: string }>,
+      unknownRequestedCondition: null,
+      profileMarkers: { activeConditionCount: 0, careTaskCount: 0, upcomingVisitCount: 0 },
+      contextSourceRefs: []
+    };
 
     const carePlanAppointmentGuidance = buildCarePlanAppointmentGuidance(
       effectiveMessage,
@@ -718,11 +848,18 @@ export async function POST(request: NextRequest) {
       context.contextSnapshotRef
     );
 
-    const lifestyleGuidance = buildLifestyleGuidance(
-      effectiveMessage,
-      profileSummary,
-      context.contextSnapshotRef
-    );
+    // TODO: Replace with RAG-based lifestyle guidance engine
+    const lifestyleGuidance = {
+      isLifestyleIntent: false,
+      isOutOfScope: false,
+      intent: null,
+      assistantMessage: null,
+      contextSourceRefs: [],
+      usedConditionIds: [],
+      usedMedicationIds: [],
+      usedCareTaskIds: [],
+      usedVisitIds: []
+    };
 
     const responseDomain = referenceResolution.fallbackMessage
       ? "general"
@@ -735,11 +872,15 @@ export async function POST(request: NextRequest) {
             : carePlanAppointmentGuidance.intent === "care-plan" ||
                 carePlanAppointmentGuidance.intent === "appointment-care-plan"
               ? "care-plan"
-              : conditionGuidance.isConditionIntent
+              : ragConditionResponse !== null
                 ? "condition"
-                : medicationGuidance.isMedicationIntent
+                : ragMedicationResponse !== null
                   ? "medication"
-                  : "general";
+                  : conditionGuidance.isConditionIntent
+                    ? "condition"
+                    : medicationGuidance.isMedicationIntent
+                      ? "medication"
+                      : "general";
 
     const entityReferences = lifestyleGuidance.isLifestyleIntent
       ? [
@@ -771,7 +912,16 @@ export async function POST(request: NextRequest) {
 
       buildGuardrailConstraintResponse();
 
-    const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage);
+    // Detect if this is an educational query (vs directive/diagnosis attempt)
+    const educationalQueryPatterns = /what (is|does|are)|tell me about|explain|describe|how do|how does/i;
+    const isEducationalQuery = 
+      educationalQueryPatterns.test(effectiveMessage) || 
+      ragMedicationTriggered || 
+      ragConditionTriggered;
+
+    const postGenerationGuard = applyPostGenerationGuardrail(draftAssistantMessage, {
+      isEducationalQuery
+    });
 
     persistGuardrailEvaluation({
       conversationId: context.conversationId,

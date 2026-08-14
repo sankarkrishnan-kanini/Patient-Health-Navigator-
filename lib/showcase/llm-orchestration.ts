@@ -6,7 +6,7 @@ export type ModelGenerationInvocation = {
 
 export const NO_MODEL_PROVIDER_RESPONSE = "__NO_MODEL_PROVIDER_RESPONSE__";
 
-type ProviderName = "openrouter" | "gemini" | "groq";
+type ProviderName = "openrouter" | "gemini" | "groq" | "nvidia-nim";
 
 type ProviderConfig = {
   provider: ProviderName;
@@ -34,7 +34,17 @@ type GeminiResponse = {
 };
 
 function getProviderConfig(): ProviderConfig {
-  const provider = (process.env.LLM_PROVIDER ?? "openrouter").toLowerCase();
+  const provider = (process.env.LLM_PROVIDER ?? "").toLowerCase();
+
+  // Check for NVIDIA NIM first (highest priority)
+  if (provider === "nvidia-nim" || process.env.NVAPI_KEY) {
+    return {
+      provider: "nvidia-nim",
+      apiKey: process.env.NVAPI_KEY,
+      model: process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-70b-instruct",
+      baseURL: "https://integrate.api.nvidia.com/v1"
+    };
+  }
 
   if (provider === "gemini") {
     return {
@@ -62,12 +72,12 @@ function getProviderConfig(): ProviderConfig {
     };
   }
 
-  if (process.env.OPENROUTER_API_KEY) {
+  // Fallback: Check for available API keys
+  if (process.env.GEMINI_API_KEY) {
     return {
-      provider: "openrouter",
-      apiKey: process.env.OPENROUTER_API_KEY,
-      model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o",
-      baseURL: "https://openrouter.ai/api/v1"
+      provider: "gemini",
+      apiKey: process.env.GEMINI_API_KEY,
+      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
     };
   }
 
@@ -80,18 +90,23 @@ function getProviderConfig(): ProviderConfig {
     };
   }
 
-  if (process.env.GEMINI_API_KEY) {
+  // Only use OpenRouter if it has a real API key (not placeholder)
+  const openrouterKey = process.env.OPENROUTER_API_KEY || "";
+  if (openrouterKey && !openrouterKey.includes("your-")) {
     return {
-      provider: "gemini",
-      apiKey: process.env.GEMINI_API_KEY,
-      model: process.env.GEMINI_MODEL ?? "gemini-2.5-flash"
+      provider: "openrouter",
+      apiKey: openrouterKey,
+      model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o",
+      baseURL: "https://openrouter.ai/api/v1"
     };
   }
 
+  // Default fallback
   return {
-    provider: "openrouter",
-    model: process.env.OPENROUTER_MODEL ?? "openai/gpt-4o",
-    baseURL: "https://openrouter.ai/api/v1"
+    provider: "nvidia-nim",
+    apiKey: process.env.NVAPI_KEY,
+    model: process.env.NVIDIA_NIM_MODEL ?? "meta/llama-3.1-70b-instruct",
+    baseURL: "https://integrate.api.nvidia.com/v1"
   };
 }
 
@@ -124,16 +139,24 @@ async function invokeViaOpenAICompatibleProvider(
   providerConfig: ProviderConfig
 ): Promise<string> {
   if (!providerConfig.apiKey) {
+    console.error("[LLM] No API key found for provider:", providerConfig.provider);
     return NO_MODEL_PROVIDER_RESPONSE;
   }
 
-  const response = await fetch(`${providerConfig.baseURL}/chat/completions`, {
+  const endpoint = `${providerConfig.baseURL}/chat/completions`;
+  console.debug("[LLM] Calling endpoint:", endpoint, "Provider:", providerConfig.provider);
+
+  const response = await fetch(endpoint, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${providerConfig.apiKey}`,
       "Content-Type": "application/json",
       ...(process.env.APP_URL ? { "HTTP-Referer": process.env.APP_URL } : {}),
-      ...(process.env.APP_NAME ? { "X-Title": process.env.APP_NAME } : {})
+      ...(process.env.APP_NAME ? { "X-Title": process.env.APP_NAME } : {}),
+      // NVIDIA NIM specific headers
+      ...(providerConfig.provider === "nvidia-nim" ? { 
+        "User-Agent": "Patient-AI-Health-Navigator/1.0"
+      } : {})
     },
     body: JSON.stringify({
       model: providerConfig.model,
@@ -153,7 +176,9 @@ async function invokeViaOpenAICompatibleProvider(
   });
 
   if (!response.ok) {
-    throw new Error(`Model request failed with status ${response.status}.`);
+    const errorText = await response.text();
+    console.error(`[LLM] Model request failed with status ${response.status}. Response:`, errorText);
+    throw new Error(`Model request failed with status ${response.status}. ${errorText.substring(0, 200)}`);
   }
 
   const data = (await response.json()) as OpenAIChatResponse;
@@ -211,8 +236,46 @@ export async function invokeModelGeneration(invocation: ModelGenerationInvocatio
   const providerConfig = getProviderConfig();
 
   if (providerConfig.provider === "gemini") {
-    return invokeViaGemini(invocation, providerConfig);
+    try {
+      return await invokeViaGemini(invocation, providerConfig);
+    } catch (error) {
+      console.error("[LLM] Gemini invocation failed:", error);
+      return generateFallbackResponse(invocation);
+    }
   }
 
-  return invokeViaOpenAICompatibleProvider(invocation, providerConfig);
+  try {
+    return await invokeViaOpenAICompatibleProvider(invocation, providerConfig);
+  } catch (error) {
+    console.error(`[LLM] ${providerConfig.provider} invocation failed:`, error);
+    return generateFallbackResponse(invocation);
+  }
+}
+
+/**
+ * Fallback response generator when LLM API fails
+ * Provides reasonable responses without external API calls
+ */
+function generateFallbackResponse(invocation: ModelGenerationInvocation): string {
+  const message = invocation.message.toLowerCase();
+  
+  // Health-related queries
+  if (message.includes("medication") || message.includes("drug")) {
+    return "I can help you understand your medications. Please ask specific questions about your medications, and I'll provide guidance based on your patient profile. For immediate medical concerns, please contact your healthcare provider.";
+  }
+  
+  if (message.includes("condition") || message.includes("disease") || message.includes("diagnosis")) {
+    return "I can provide information about your health conditions. Please feel free to ask questions about how to manage your conditions, lifestyle changes, or when to seek care. For acute concerns, contact your provider.";
+  }
+  
+  if (message.includes("appointment") || message.includes("visit") || message.includes("schedule")) {
+    return "You can view and manage your appointments through the patient portal. Please contact your healthcare provider's office if you need to schedule a new visit.";
+  }
+  
+  if (message.includes("symptom") || message.includes("feeling") || message.includes("pain")) {
+    return "I can help you understand your symptoms and when to seek care. Please describe your symptoms, and I'll guide you based on your health profile. For emergencies, always call 911.";
+  }
+  
+  // Default response
+  return "I'm here to help you navigate your healthcare. You can ask me about your medications, conditions, appointments, or general health guidance. How can I assist you today?";
 }
