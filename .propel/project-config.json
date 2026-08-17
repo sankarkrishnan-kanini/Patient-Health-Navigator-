@@ -140,6 +140,21 @@
             "references": ["codeanalysis"],
             "workflow": "/assess-codebase-maturity"
         },
+        "coverage": {
+            "propelFileName": "coverage.md",
+            "propelDirPath": "${basePropelPath}/docs",
+            "templates": {
+                "default": ".propel/templates/implementation-coverage-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["spec"],
+            "workflow": "/probe-implementation-coverage",
+            "qualityThreshold": 80,
+            "_note": "Evidence-only reconciliation of spec requirements against the existing codebase. A requirement is listed only when code evidence covers every one of its acceptance signals; requirements absent from this file are planned as normal work."
+        },
         "findings_registry": {
             "propelFileName": "findings-registry.md",
             "propelDirPath": "./.propel/learnings",
