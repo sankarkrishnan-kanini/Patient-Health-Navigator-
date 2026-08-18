@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiSuccess } from "@/lib/api-response";
+import { getOrSetCache } from "@/lib/cache";
 import {
   attachCorrelationIdHeader,
   getCorrelationIdFromRequest
@@ -8,6 +9,11 @@ import { AppError, handleRouteError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
 import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
 import { listDynamicPatientOptions } from "@/lib/showcase/profile-data";
+
+const PATIENT_OPTIONS_CACHE_TTL_SECONDS = Number.parseInt(
+  process.env.PATIENT_OPTIONS_CACHE_TTL_SECONDS ?? "120",
+  10
+);
 
 function routeLogger(request: NextRequest) {
   const correlationId = getCorrelationIdFromRequest(request);
@@ -25,7 +31,14 @@ export async function GET(request: NextRequest) {
   const { correlationId, log } = routeLogger(request);
 
   try {
-    const dynamicOptions = await listDynamicPatientOptions();
+    const optionsCache = await getOrSetCache(
+      "profile-options",
+      Number.isFinite(PATIENT_OPTIONS_CACHE_TTL_SECONDS)
+        ? Math.max(PATIENT_OPTIONS_CACHE_TTL_SECONDS, 1)
+        : 120,
+      listDynamicPatientOptions
+    );
+    const dynamicOptions = optionsCache.value;
     if (dynamicOptions.length === 0) {
       throw new AppError(
         "PROFILE_DATA_UNAVAILABLE",
@@ -40,6 +53,8 @@ export async function GET(request: NextRequest) {
 
     log.info("patient_profile.options.loaded", {
       optionCount: options.length,
+      cacheHit: optionsCache.hit,
+      cacheStore: optionsCache.store,
       source: "normalized"
     });
 

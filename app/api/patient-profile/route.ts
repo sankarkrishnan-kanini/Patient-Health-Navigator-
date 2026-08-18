@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
 import { apiNotImplemented, apiSuccess } from "@/lib/api-response";
+import { getOrSetCache } from "@/lib/cache";
 import { fetchShowcaseProfileSummary } from "@/lib/showcase/profile-summary";
 import {
   attachCorrelationIdHeader,
@@ -7,6 +8,13 @@ import {
 } from "@/lib/correlation-id";
 import { AppError, handleRouteError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
+
+export const dynamic = "force-dynamic";
+
+const PROFILE_SUMMARY_CACHE_TTL_SECONDS = Number.parseInt(
+  process.env.PROFILE_SUMMARY_CACHE_TTL_SECONDS ?? "60",
+  10
+);
 
 function routeLogger(request: NextRequest) {
   const correlationId = getCorrelationIdFromRequest(request);
@@ -33,7 +41,14 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const summary = await fetchShowcaseProfileSummary(profileId, { delayMs: 0 });
+    const summaryCache = await getOrSetCache(
+      `profile-summary:${profileId}`,
+      Number.isFinite(PROFILE_SUMMARY_CACHE_TTL_SECONDS)
+        ? Math.max(PROFILE_SUMMARY_CACHE_TTL_SECONDS, 1)
+        : 60,
+      () => fetchShowcaseProfileSummary(profileId, { delayMs: 0 })
+    );
+    const summary = summaryCache.value;
     if (!summary) {
       throw new AppError("PROFILE_NOT_FOUND", "Patient profile was not found.", 404);
     }
@@ -42,12 +57,13 @@ export async function GET(request: NextRequest) {
 
     log.info("patient_profile.summary.loaded", {
       profileId,
+      cacheHit: summaryCache.hit,
+      cacheStore: summaryCache.store,
       conditionCount: summary.activeConditions.length,
       medicationCount: summary.activeMedications.length,
       careTaskCount: summary.careTasks.length,
       visitCount: summary.upcomingVisits.length
     });
-
     log.info("api.request.completed", {
       method: request.method,
       pathname: request.nextUrl.pathname,

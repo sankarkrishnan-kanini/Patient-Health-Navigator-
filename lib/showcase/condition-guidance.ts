@@ -4,6 +4,9 @@ import { getConditionContext, type ConditionKnowledge } from "@/lib/showcase/med
 const CONDITION_INTENT_PATTERN =
   /\b(condition|conditions|diagnosis|diagnosed|disease|illness|symptom|symptoms|fever|cough|pain|headache|nausea|explain|what is)\b/i;
 
+const MEDICATION_SIGNAL_PATTERN =
+  /\b(medication|medications|medicine|meds|pill|pills|prescription|prescriptions|dose|dosage|schedule|tablet|capsule)\b/i;
+
 const GENERIC_REQUEST_TERMS = new Set([
   "condition",
   "conditions",
@@ -43,7 +46,16 @@ function normalizeText(value: string): string {
 }
 
 function hasConditionIntent(message: string): boolean {
-  return CONDITION_INTENT_PATTERN.test(message);
+  if (!CONDITION_INTENT_PATTERN.test(message)) {
+    return false;
+  }
+
+  // Guard against overlap like "explain my medications".
+  if (MEDICATION_SIGNAL_PATTERN.test(message)) {
+    return false;
+  }
+
+  return true;
 }
 
 function toConditionContext(condition: ProfileCondition): ConditionContext {
