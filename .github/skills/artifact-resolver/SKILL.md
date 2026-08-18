@@ -78,7 +78,8 @@ The project configuration is bundled at `assets/project-config.json` within the 
       },
       "contentType": "pdf",
       "mcpType": "local",
-      "references": []
+      "references": [],
+      "qualityThreshold": 85
     }
   }
 }
@@ -95,6 +96,7 @@ Each artifact entry provides:
 - **mcpType** — how the artifact is accessed (`local` for files on disk, or other MCP transport types)
 - **references** — array of artifact keys this artifact may consult on demand as context (non-blocking — unavailable references are skipped). For `change_request`, the array order also defines the execution sequence used by `/apply-change`.
 - **workflow** — *(optional)* slash command that creates or updates this artifact (e.g., `/create-spec`). Empty string `""` if the artifact has no creator workflow (e.g., `findings_registry`, `signal_ledger`). Used by `/request-change` and `/apply-change` to map CR rows to the workflow that processes them.
+- **qualityThreshold** — *(optional)* minimum quality score (0-100) this artifact's producing step must meet before advancing to a human gate; enforced server-side by `SubmitGateDecision`'s run engine. Omit if unconfigured — the server defaults to 80% in that case, so this key does not need a fallback value here.
 
 ## Resolved output schema
 
@@ -118,6 +120,7 @@ When you call `/artifact-resolver <key>`, the resolver returns:
   "mcpType": "local",
   "references": [],
   "workflow": "/create-spec",
+  "qualityThreshold": 85,
   "knowledgePath": "./.propel/knowledge/artifacts/spec/spec.tree.json",
   "knowledgeLinksPath": "./.propel/knowledge/artifacts/spec/spec.links.json",
   "knowledgeStatus": "fresh",
@@ -136,6 +139,7 @@ When you call `/artifact-resolver <key>`, the resolver returns:
 - **templates** — object map of named template paths, passed through from config as-is
 - **schema** — path to the artifact's schema contract, passed through from config as-is (empty string if the artifact has no schema)
 - **contentType** / **mcpType** / **references** / **workflow** — passed through from config as-is
+- **qualityThreshold** — passed through from config as-is; omitted/`null` when unconfigured. When building `pathContext` for `StartWorkflowRun`/`BindRunPaths`, carry this through as `quality_threshold` on the artifact's binding entry (alongside `path`/`content_type`/`mcp_type`) so the server can enforce it — see `orchestrators/concept-validation.md` for the exact `pathContext` shape.
 - **knowledgePath** — fully resolved path to the knowledge map tree file for this artifact (always computed; may not exist on disk)
 - **knowledgeLinksPath** — fully resolved path to the knowledge map links file (traceability edges)
 - **knowledgeStatus** — one of:

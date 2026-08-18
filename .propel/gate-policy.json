@@ -10,7 +10,6 @@
     },
     {
       "match": {
-        "workflow": "technical-discovery",
         "prompt": "create-spec"
       },
       "gate": "always",

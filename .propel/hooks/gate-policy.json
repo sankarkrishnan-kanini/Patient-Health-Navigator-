@@ -7,7 +7,7 @@
       "reason": "Prototype output touches real code paths and must be reviewed before any merge, regardless of caller request"
     },
     {
-      "match": { "workflow": "technical-discovery", "prompt": "create-spec" },
+      "match": { "prompt": "create-spec" },
       "gate": "always",
       "reason": "Requirements sign-off is contractual"
     },

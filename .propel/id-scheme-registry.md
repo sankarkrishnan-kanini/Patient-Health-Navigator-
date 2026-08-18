@@ -35,11 +35,12 @@ Canonical ID patterns used across PropelIQ templates and prompts. Templates refe
 
 | Scheme | Range | Owner Template | Meaning |
 |--------|-------|----------------|---------|
-| `TC-###` | 001–999 | test-plan-template.md | Test case (base form) |
+| `TC-###` | 001–999 | test-plan-template.md, unit-test-template.md, integration-test-plan-template.md | Test case (base form) |
 | `TC-<TYPE>-###` | compound | test-plan-template.md | Test case derived from a requirement type — see compound rule below |
 | `E2E-<JOURNEY>` | compound | test-plan-template.md | End-to-end journey test |
-| `EC-###` | 001–999 | unit-test-template.md | Edge case test |
+| `EC-###` | 001–999 | unit-test-template.md, integration-test-plan-template.md | Edge case test |
 | `ES-###` | 001–999 | unit-test-template.md | Error scenario test |
+| `PT-###` | 001–999 | performance-test-plan-template.md | Performance test scenario (load/stress/soak/spike) — threshold-based, not GWT-shaped |
 
 ### Compound `TC-<TYPE>-###` rule
 

@@ -84,7 +84,7 @@
             "contentType": "md",
             "mcpType": "local",
             "references": ["spec", "design", "model", "figma_spec", "designsystem", "findings_registry"],
-            "workflow": "/plan-development-task"
+            "workflow": "/plan-development-tasks"
         },
         "figma_spec": {
             "propelFileName": "figma_spec.md",
@@ -139,6 +139,21 @@
             "mcpType": "local",
             "references": ["codeanalysis"],
             "workflow": "/assess-codebase-maturity"
+        },
+        "coverage": {
+            "propelFileName": "coverage.md",
+            "propelDirPath": "${basePropelPath}/docs",
+            "templates": {
+                "default": ".propel/templates/implementation-coverage-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["spec"],
+            "workflow": "/probe-implementation-coverage",
+            "qualityThreshold": 80,
+            "_note": "Evidence-only reconciliation of spec requirements against the existing codebase. A requirement is listed only when code evidence covers every one of its acceptance signals; requirements absent from this file are planned as normal work."
         },
         "findings_registry": {
             "propelFileName": "findings-registry.md",
@@ -243,6 +258,20 @@
             "references": ["design"],
             "workflow": "/plan-unit-test"
         },
+        "integration_test": {
+            "propelFileName": "test_plan_<layer>_<name>.md",
+            "propelDirPath": "${basePropelPath}/tasks",
+            "templates": {
+                "default": ".propel/templates/integration-test-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["design", "epics", "sprint_plan"],
+            "workflow": "/plan-integration-test",
+            "_note": "Story-scoped integration test plan against real dependencies. Output directory suffix (unittest/ vs integrationtest/) is computed by the prompt from propelDirPath, not by this config."
+        },
         "automation_test": {
             "propelFileName": "",
             "propelFileNames": {
@@ -316,7 +345,7 @@
             "references": ["findings_registry"],
             "workflow": "/review-code"
         },
-        "execute_unittest": {
+        "execute_test": {
             "propelFileName": "",
             "propelDirPath": "",
             "templates": {},
@@ -325,8 +354,46 @@
             "contentType": "code",
             "mcpType": "local",
             "references": [],
-            "workflow": "/execute-unittest",
-            "_note": "Test-execution prompt; runs tests, produces no markdown artifact. propelFileName/propelDirPath intentionally empty."
+            "workflow": "/execute-test",
+            "_note": "Test-execution prompt; runs unit or integration tests (--layer, default unit). Produces no markdown artifact. propelFileName/propelDirPath intentionally empty."
+        },
+        "performance_test": {
+            "propelFileName": "perf_test_plan_<name>.md",
+            "propelDirPath": "${basePropelPath}/docs",
+            "templates": {
+                "default": ".propel/templates/performance-test-plan-template.md"
+            },
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "md",
+            "mcpType": "local",
+            "references": ["design", "test_plan"],
+            "workflow": "/plan-performance-test",
+            "_note": "Feature/system-scoped, not per-story. Optional infra-spec environment cross-check is designed but has no backing resolver key yet — devops-agent's plan-cloud-infrastructure output isn't registered as a referenceable artifact anywhere in this config. Non-blocking: the cross-check silently no-ops until that separate gap is closed."
+        },
+        "performance_test_scripts": {
+            "propelFileName": "",
+            "propelDirPath": "./test-automation",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "code",
+            "mcpType": "local",
+            "references": ["performance_test"],
+            "workflow": "/generate-performance-test-scripts",
+            "_note": "Code-action prompt; generates k6/JMeter/Artillery scripts, produces no markdown artifact. propelFileName intentionally empty."
+        },
+        "performance_test_execution": {
+            "propelFileName": "",
+            "propelDirPath": "",
+            "templates": {},
+            "projectFileName": "",
+            "projectDirPath": "",
+            "contentType": "code",
+            "mcpType": "local",
+            "references": [],
+            "workflow": "/execute-performance-test",
+            "_note": "Test-execution prompt; runs load/stress/soak/spike scenarios against a non-production target. Produces no markdown artifact. propelFileName/propelDirPath intentionally empty."
         },
         "challenge_artifact": {
             "propelFileName": "challenge_<timestamp>.md",
