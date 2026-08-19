@@ -4,7 +4,7 @@ description: For Developers. Orchestrates implementation phase—task planning, 
 tools: ['execute/createAndRunTask', 'read/readFile', 'azure-mcp/search', 'edit/createDirectory', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'todo', propel-sdlc/*]
 ---
 
-consult `.propel/orchestrators/build-feature-agent.md` for the workflow steps.
+consult `.propel/orchestrators/feature-implementation.md` for the workflow steps.
 
 ---
 

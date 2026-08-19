@@ -4,7 +4,7 @@ description: For QA Engineers. Orchestrates test automation sequentially—autom
 tools: ['read/readFile', 'edit/createFile', 'edit/editFiles', 'search', 'web', 'context7/*', 'sequential-thinking/*', 'todo', propel-sdlc/*]
 ---
 
-consult `.propel/orchestrators/validation-agent.md` for the workflow steps.
+consult `.propel/orchestrators/quality-engineering.md` for the workflow steps.
 
 ---
 
