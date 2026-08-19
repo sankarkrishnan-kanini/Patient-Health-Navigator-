@@ -17,9 +17,29 @@ export type EmergencyEscalationResponse = {
   templateVersion: string;
   template: EmergencyEscalationTemplate;
   assistantMessage: string;
+  emergencyContacts: EmergencyContact[];
+};
+
+export type EmergencyContact = {
+  label: string;
+  number: string;
+  description: string;
 };
 
 export const EMERGENCY_ESCALATION_TEMPLATE_VERSION = "emergency-escalation.v1";
+
+const INDIA_EMERGENCY_CONTACTS: EmergencyContact[] = [
+  {
+    label: "National Emergency",
+    number: "112",
+    description: "National emergency response"
+  },
+  {
+    label: "Ambulance Service",
+    number: "108",
+    description: "Emergency ambulance service"
+  }
+];
 
 const ESCALATION_TEMPLATES: Record<EmergencyEscalationClass, EmergencyEscalationTemplate> = {
   "chest-pain": {
@@ -80,6 +100,7 @@ export function buildEmergencyEscalationResponse(
   return {
     templateVersion: EMERGENCY_ESCALATION_TEMPLATE_VERSION,
     template,
-    assistantMessage: buildAssistantMessage(template)
+    assistantMessage: buildAssistantMessage(template),
+    emergencyContacts: INDIA_EMERGENCY_CONTACTS
   };
 }

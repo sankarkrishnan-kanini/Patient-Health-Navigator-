@@ -40,11 +40,34 @@ type ChatApiResponse = {
     turn?: {
       assistantMessage?: string;
     };
+    safety?: {
+      emergencyEscalation?: {
+        emergencyContacts?: EmergencyContact[];
+      };
+    };
+    appointmentBookingAction?: AppointmentBookingAction;
   };
   error?: {
     code?: string;
     message?: string;
   };
+};
+
+type EmergencyContact = {
+  label: string;
+  number: string;
+  description: string;
+};
+
+type ChatAssistantResponse = {
+  assistantMessage: string;
+  emergencyContacts: EmergencyContact[];
+  appointmentBookingAction: AppointmentBookingAction | null;
+};
+
+type AppointmentBookingAction = {
+  label: string;
+  href: string;
 };
 
 type ApiRequestError = Error & {
@@ -96,7 +119,7 @@ async function createChatSessionForProfile(profileId: string): Promise<string> {
 async function requestChatAssistantMessage(
   activeConversationId: string,
   message: string
-): Promise<string> {
+): Promise<ChatAssistantResponse> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -118,7 +141,12 @@ async function requestChatAssistantMessage(
     );
   }
 
-  return data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.";
+  return {
+    assistantMessage:
+      data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.",
+    emergencyContacts: data.data?.safety?.emergencyEscalation?.emergencyContacts ?? [],
+    appointmentBookingAction: data.data?.appointmentBookingAction ?? null
+  };
 }
 
 function parseStoredTranscript(serialized: string | null): StoredTranscript | null {
@@ -159,6 +187,8 @@ export default function ChatPage() {
   const [reloadCounter, setReloadCounter] = useState<number>(0);
   const [draftMessage, setDraftMessage] = useState<string>("");
   const [transcriptTurns, setTranscriptTurns] = useState<ChatTranscriptTurn[]>([]);
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [appointmentBookingAction, setAppointmentBookingAction] = useState<AppointmentBookingAction | null>(null);
   const [nextTurnSequence, setNextTurnSequence] = useState<number>(0);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState<boolean>(false);
 
@@ -426,18 +456,20 @@ export default function ChatPage() {
     // Optimistically add user turn immediately
     setTranscriptTurns((current) => sortTranscriptTurnsStable([...current, userTurn]));
 
-    const appendAssistantTurn = (assistantMessage: string): void => {
+    const appendAssistantTurn = (result: ChatAssistantResponse): void => {
       const assistantTurn: ChatTranscriptTurn = {
         id: `turn-${(nextTurnSequence + 1).toString()}`,
         sequence: nextTurnSequence + 1,
         role: "assistant",
-        message: assistantMessage,
+        message: result.assistantMessage,
         createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
       };
 
       setTranscriptTurns((current) =>
         sortTranscriptTurnsStable([...current, assistantTurn])
       );
+      setEmergencyContacts(result.emergencyContacts);
+      setAppointmentBookingAction(result.appointmentBookingAction);
       setNextTurnSequence((current) => current + 2);
     };
 
@@ -462,8 +494,8 @@ export default function ChatPage() {
 
     const submit = async (): Promise<void> => {
       try {
-        const assistantMessage = await requestChatAssistantMessage(conversationId, nextMessage);
-        appendAssistantTurn(assistantMessage);
+        const result = await requestChatAssistantMessage(conversationId, nextMessage);
+        appendAssistantTurn(result);
         return;
       } catch (error) {
         const requestError = error as ApiRequestError;
@@ -476,8 +508,8 @@ export default function ChatPage() {
             console.warn("Session not found, recreating...", { code: requestError.code, status: requestError.status });
             const nextConversationId = await createChatSessionForProfile(confirmedProfileId);
             setConversationId(nextConversationId);
-            const assistantMessage = await requestChatAssistantMessage(nextConversationId, nextMessage);
-            appendAssistantTurn(assistantMessage);
+            const result = await requestChatAssistantMessage(nextConversationId, nextMessage);
+            appendAssistantTurn(result);
             return;
           } catch (retryError) {
             console.error("Session recovery failed:", retryError);
@@ -579,6 +611,37 @@ export default function ChatPage() {
               </ol>
             )}
           </section>
+
+          {emergencyContacts.length > 0 && (
+            <section className="emergency-contact-card" aria-labelledby="emergency-contact-heading">
+              <h3 id="emergency-contact-heading">Emergency Contacts</h3>
+              <p>Call emergency services now if you may be having a medical emergency.</p>
+              <div className="emergency-contact-actions">
+                {emergencyContacts.map((contact) => (
+                  <a key={contact.number} href={`tel:${contact.number}`} className="emergency-contact-link">
+                    <span>{contact.label}</span>
+                    <strong>{contact.number}</strong>
+                    <small>{contact.description}</small>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {appointmentBookingAction && (
+            <section className="appointment-booking-card" aria-labelledby="appointment-booking-heading">
+              <h3 id="appointment-booking-heading">Ready to Book an Appointment?</h3>
+              <p>Continue to the appointment booking system.</p>
+              <a
+                href={appointmentBookingAction.href}
+                className="appointment-booking-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {appointmentBookingAction.label}
+              </a>
+            </section>
+          )}
 
           <p className="chat-shell-note">The profile summary panel remains visible while chat is active.</p>
         </section>
