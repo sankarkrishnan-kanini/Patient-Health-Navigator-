@@ -1,5 +1,17 @@
 import mysql from "mysql2/promise";
 
+export type GuardrailAnalyticsCountRow = {
+  evaluationName: string;
+  triggered: boolean;
+  count: number;
+};
+
+type GuardrailAnalyticsQueryRow = mysql.RowDataPacket & {
+  evaluationName: string;
+  triggered: number;
+  count: number | string;
+};
+
 type SessionBindingLike = {
   patientId: string;
   contextSnapshotRef: string;
@@ -245,6 +257,31 @@ export async function persistGuardrailEvent(event: GuardrailStoredEventLike): Pr
       event.sensitive.keyVersion
     ]
   );
+}
+
+export async function queryGuardrailAnalyticsCounts(): Promise<GuardrailAnalyticsCountRow[] | null> {
+  const activePool = getPool();
+  if (!activePool) {
+    return null;
+  }
+
+  const [rows] = await activePool.query<GuardrailAnalyticsQueryRow[]>(
+    `
+      SELECT
+        evaluation_name AS evaluationName,
+        triggered,
+        COUNT(*) AS count
+      FROM guardrail_events
+      WHERE event_type = 'guardrail_evaluation'
+      GROUP BY evaluation_name, triggered
+    `
+  );
+
+  return rows.map((row) => ({
+    evaluationName: row.evaluationName,
+    triggered: row.triggered === 1,
+    count: Number(row.count)
+  }));
 }
 
 export function persistChatSessionSafely(session: SessionMetadataLike): void {

@@ -23,6 +23,14 @@ type OpenAIChatResponse = {
   }>;
 };
 
+type OpenAIChatStreamChunk = {
+  choices?: Array<{
+    delta?: {
+      content?: string | null;
+    };
+  }>;
+};
+
 type GeminiResponse = {
   candidates?: Array<{
     content?: {
@@ -134,6 +142,44 @@ function readGeminiContent(response: GeminiResponse): string {
   return text;
 }
 
+async function readOpenAICompatibleStream(response: Response): Promise<string> {
+  if (!response.body) {
+    return NO_MODEL_PROVIDER_RESPONSE;
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let bufferedText = "";
+  let content = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    bufferedText += decoder.decode(value, { stream: !done });
+    const lines = bufferedText.split("\n");
+    bufferedText = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const eventData = line.trim().replace(/^data:\s*/, "");
+      if (!eventData || eventData === "[DONE]") {
+        continue;
+      }
+
+      try {
+        const chunk = JSON.parse(eventData) as OpenAIChatStreamChunk;
+        content += chunk.choices?.[0]?.delta?.content ?? "";
+      } catch {
+        // Ignore SSE metadata and keep-alive messages.
+      }
+    }
+
+    if (done) {
+      break;
+    }
+  }
+
+  return content.trim() || NO_MODEL_PROVIDER_RESPONSE;
+}
+
 async function invokeViaOpenAICompatibleProvider(
   invocation: ModelGenerationInvocation,
   providerConfig: ProviderConfig
@@ -171,7 +217,9 @@ async function invokeViaOpenAICompatibleProvider(
           content: buildInvocationPrompt(invocation)
         }
       ],
-      temperature: 0.2
+      temperature: 0.2,
+      max_tokens: 300,
+      stream: providerConfig.provider === "nvidia-nim"
     })
   });
 
@@ -179,6 +227,10 @@ async function invokeViaOpenAICompatibleProvider(
     const errorText = await response.text();
     console.error(`[LLM] Model request failed with status ${response.status}. Response:`, errorText);
     throw new Error(`Model request failed with status ${response.status}. ${errorText.substring(0, 200)}`);
+  }
+
+  if (providerConfig.provider === "nvidia-nim") {
+    return readOpenAICompatibleStream(response);
   }
 
   const data = (await response.json()) as OpenAIChatResponse;

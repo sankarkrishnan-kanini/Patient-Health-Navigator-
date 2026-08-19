@@ -1,7 +1,7 @@
-# backlog-agent
+﻿# backlog-refinement
 
 ## Read the workflow from PropelIQ MCP
 Call MCP tool:
-    - ReadWorkflow(name="backlog-agent", version="latest")
+    - ReadWorkflow(name="backlog-refinement", version="1.0")
 
 - Update ToDo list derived from the returned workflow instructions by readjusting the items.

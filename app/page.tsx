@@ -39,6 +39,16 @@ export default function HomePage() {
           </span>
           <ArrowUpRight size={20} aria-hidden="true" />
         </Link>
+
+        <Link className="workspace-action" href="/analytics/guardrails">
+          <span className="workspace-action-icon" aria-hidden="true"><ShieldCheck size={23} /></span>
+          <span>
+            <span className="workspace-action-kicker">Safety operations</span>
+            <strong>Guardrail analytics</strong>
+            <small>Review critical, medication, and routine safety classifications.</small>
+          </span>
+          <ArrowUpRight size={20} aria-hidden="true" />
+        </Link>
       </section>
 
       <section className="assurance-strip" aria-label="Safety controls">

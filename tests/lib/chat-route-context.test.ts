@@ -463,7 +463,7 @@ describe("POST /api/chat request context propagation", () => {
     expect(body.data.turn.assistantMessage).toContain("Call emergency services now");
     expect(body.data.turn.assistantMessage).toContain("immediately");
     expect(body.data.turn.assistantMessage).toContain("cannot safely triage emergency symptoms in chat");
-    expect(body.data.safety.emergencyTrigger.ruleSetVersion).toBe("emergency-triggers.v1");
+    expect(body.data.safety.emergencyTrigger.ruleSetVersion).toBe("emergency-triggers.v2");
     expect(body.data.safety.emergencyTrigger.matches).toEqual([
       {
         ruleId: "ER-CHEST-PAIN-001",

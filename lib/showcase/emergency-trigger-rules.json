@@ -1,5 +1,5 @@
 {
-  "ruleSetVersion": "emergency-triggers.v1",
+  "ruleSetVersion": "emergency-triggers.v2",
   "rules": [
     {
       "ruleId": "ER-CHEST-PAIN-001",
@@ -8,7 +8,9 @@
         "chest pain",
         "pain in chest",
         "chest pressure",
-        "chest tightness"
+        "chest tightness",
+        "heart attack",
+        "having a heart attack"
       ]
     },
     {

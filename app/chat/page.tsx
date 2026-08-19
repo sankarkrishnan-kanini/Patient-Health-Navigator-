@@ -180,6 +180,7 @@ function parseStoredTranscript(serialized: string | null): StoredTranscript | nu
 
 export default function ChatPage() {
   const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
+  const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
   const [optionsLoadError, setOptionsLoadError] = useState<string | null>(null);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
