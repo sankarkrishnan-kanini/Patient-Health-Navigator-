@@ -80,6 +80,30 @@ describe("medication boundary", () => {
     }
   });
 
+  it("blocks numeric dosage-choice requests", () => {
+    const result = buildMedicationBoundary(
+      "Fexofenadine hydrochloride: should I take 3 or 4?",
+      sampleProfile,
+      "showcase-profile-summary:patient-401"
+    );
+
+    expect(result.isMedicationBoundary).toBe(true);
+    expect(result.category).toBe("dosage-instruction");
+    expect(result.matchedRuleIds).toContain("MED-BOUNDARY-DOSAGE-INSTRUCTION-001");
+  });
+
+  it("blocks numeric medication-frequency requests", () => {
+    const result = buildMedicationBoundary(
+      "Hydrocortisone, can I take 4 times a day?",
+      sampleProfile,
+      "showcase-profile-summary:patient-401"
+    );
+
+    expect(result.isMedicationBoundary).toBe(true);
+    expect(result.category).toBe("dosage-instruction");
+    expect(result.matchedRuleIds).toContain("MED-BOUNDARY-DOSAGE-INSTRUCTION-001");
+  });
+
   it("does not block neutral medication education requests", () => {
     const result = buildMedicationBoundary(
       "What does Medication A do?",

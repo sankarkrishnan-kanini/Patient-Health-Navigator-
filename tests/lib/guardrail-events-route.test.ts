@@ -87,4 +87,5 @@ describe("GET /api/chat/guardrail-events", () => {
     });
     expect(reviewBody.data.events[0].timestamp).toBeTruthy();
   });
+
 });

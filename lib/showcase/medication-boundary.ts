@@ -101,6 +101,13 @@ function includesPhrase(normalizedMessage: string, phrase: string): boolean {
   return ` ${normalizedMessage} `.includes(` ${normalizedPhrase} `);
 }
 
+function hasNumericDosageChoice(normalizedMessage: string): boolean {
+  return (
+    /\b(?:should|can) i take \d+ (?:or|to) \d+\b/.test(normalizedMessage) ||
+    /\b(?:should|can) i take \d+ times (?:a|per) day\b/.test(normalizedMessage)
+  );
+}
+
 function buildMedicationBoundaryMessage(
   profile: PatientProfileSummary,
   category: MedicationBoundaryCategory
@@ -147,6 +154,15 @@ export function buildMedicationBoundary(
   const matchedRules = ruleSet.rules.filter((rule) =>
     rule.phrases.some((phrase) => includesPhrase(normalizedMessage, phrase))
   );
+
+  if (hasNumericDosageChoice(normalizedMessage)) {
+    const dosageInstructionRule = ruleSet.rules.find(
+      (rule) => rule.ruleId === "MED-BOUNDARY-DOSAGE-INSTRUCTION-001"
+    );
+    if (dosageInstructionRule && !matchedRules.includes(dosageInstructionRule)) {
+      matchedRules.push(dosageInstructionRule);
+    }
+  }
 
   if (matchedRules.length === 0) {
     return {

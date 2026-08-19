@@ -9,7 +9,7 @@ describe("emergency trigger engine", () => {
     const result = detectEmergencyTriggers("I have chest pain and shortness of breath.");
 
     expect(result.isEmergency).toBe(true);
-    expect(result.ruleSetVersion).toBe("emergency-triggers.v1");
+    expect(result.ruleSetVersion).toBe("emergency-triggers.v2");
     expect(result.matches).toEqual([
       {
         ruleId: "ER-CHEST-PAIN-001",
@@ -81,6 +81,17 @@ describe("emergency trigger engine", () => {
       expect(result.isEmergency).toBe(true);
       expect(result.matches.length).toBeGreaterThan(0);
     }
+  });
+
+  it("flags heart-attack language as an emergency", () => {
+    const result = detectEmergencyTriggers("I have a slight heart attack.");
+
+    expect(result.isEmergency).toBe(true);
+    expect(result.matches).toContainEqual({
+      ruleId: "ER-CHEST-PAIN-001",
+      triggerLabel: "chest-pain",
+      matchedExpression: "heart attack"
+    });
   });
 
   it("does not match unrelated non-emergency text", () => {
