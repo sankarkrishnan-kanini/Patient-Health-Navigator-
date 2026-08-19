@@ -13,7 +13,10 @@ import { fetchShowcaseProfileSummary } from "@/lib/showcase/profile-summary";
 import { applyPlainLanguageControls } from "@/lib/showcase/plain-language-controls";
 import { applyClarificationPrompt, type ClarificationDomain } from "@/lib/showcase/clarification-prompt";
 import { buildDiagnosisBoundary } from "@/lib/showcase/diagnosis-boundary";
-import { buildCarePlanAppointmentGuidance } from "@/lib/showcase/careplan-appointment-guidance";
+import {
+  buildCarePlanAppointmentGuidance,
+  isAppointmentBookingRequest
+} from "@/lib/showcase/careplan-appointment-guidance";
 import { resolveFollowUpReference } from "@/lib/showcase/reference-resolution";
 import { applyResponseConsistencyGuard } from "@/lib/showcase/response-consistency-guard";
 import { detectEmergencyTriggers } from "@/lib/showcase/emergency-trigger-engine";
@@ -36,6 +39,9 @@ import {
   type MedicationKnowledge,
   type ConditionKnowledge
 } from "@/lib/showcase/medical-knowledge-base";
+
+const APPOINTMENT_BOOKING_BASE_URL =
+  process.env.APPOINTMENT_BOOKING_URL?.trim() || "http://localhost:3000";
 
 type ChatRequestPayload = {
   conversationId: string;
@@ -321,6 +327,7 @@ export async function POST(request: NextRequest) {
             headline: escalationResponse.template.headline,
             immediateActions: escalationResponse.template.immediateActions,
             safetyBoundary: escalationResponse.template.safetyBoundary,
+            emergencyContacts: escalationResponse.emergencyContacts,
             minimizationValidation: {
               ruleSetVersion: minimizationGuard.ruleSetVersion,
               violationDetected: minimizationGuard.violationDetected,
@@ -847,6 +854,12 @@ export async function POST(request: NextRequest) {
       profileSummary,
       context.contextSnapshotRef
     );
+    const appointmentBookingAction = isAppointmentBookingRequest(effectiveMessage)
+      ? {
+          label: "Book an Appointment",
+          href: APPOINTMENT_BOOKING_BASE_URL
+        }
+      : undefined;
 
     // TODO: Replace with RAG-based lifestyle guidance engine
     const lifestyleGuidance = {
@@ -865,6 +878,8 @@ export async function POST(request: NextRequest) {
       ? "general"
       : diagnosisBoundary.isDiagnosisIntent
         ? "diagnosis-boundary"
+        : medicationGuidance.isMedicationIntent
+          ? "medication"
         : lifestyleGuidance.isLifestyleIntent
           ? "lifestyle"
           : carePlanAppointmentGuidance.intent === "appointment"
@@ -889,13 +904,13 @@ export async function POST(request: NextRequest) {
           ...lifestyleGuidance.usedCareTaskIds,
           ...lifestyleGuidance.usedVisitIds
         ]
+      : medicationGuidance.isMedicationIntent
+        ? medicationGuidance.medicationsUsed.map((medication) => medication.name)
       : carePlanAppointmentGuidance.isIntentMatch
         ? [...carePlanAppointmentGuidance.usedVisitIds, ...carePlanAppointmentGuidance.usedCareTaskIds]
         : conditionGuidance.isConditionIntent
           ? conditionGuidance.conditionsUsed.map((condition) => condition.label)
-          : medicationGuidance.isMedicationIntent
-            ? medicationGuidance.medicationsUsed.map((medication) => medication.name)
-            : [];
+          : [];
 
     const groundedAssistantMessage =
       referenceResolution.fallbackMessage ??
@@ -903,8 +918,8 @@ export async function POST(request: NextRequest) {
 
       lifestyleGuidance.assistantMessage ??
       carePlanAppointmentGuidance.assistantMessage ??
-      conditionGuidance.assistantMessage ??
-      medicationGuidance.assistantMessage;
+      medicationGuidance.assistantMessage ??
+      conditionGuidance.assistantMessage;
 
     const draftAssistantMessage =
       groundedAssistantMessage ??
@@ -949,10 +964,10 @@ export async function POST(request: NextRequest) {
     });
 
     const plainLanguageReview = applyPlainLanguageControls(consistencyReview.finalResponse);
-    const clarificationDomain: ClarificationDomain = conditionGuidance.assistantMessage
-      ? "condition"
-      : medicationGuidance.assistantMessage
-        ? "medication"
+    const clarificationDomain: ClarificationDomain = medicationGuidance.assistantMessage
+      ? "medication"
+      : conditionGuidance.assistantMessage
+        ? "condition"
         : "general";
     const clarificationReview = applyClarificationPrompt({
       responseText: plainLanguageReview.responseText,
@@ -1088,6 +1103,7 @@ export async function POST(request: NextRequest) {
             }
           }
         : undefined,
+      appointmentBookingAction,
       turn: {
         userMessage: payload.message,
         assistantMessage

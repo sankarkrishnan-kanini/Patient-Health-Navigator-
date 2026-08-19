@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MessageCircle, Send } from "lucide-react";
+import { toast } from "react-toastify";
 import { PatientSelector } from "@/app/chat/_components/patient-selector";
 import { ProfileSummaryPanel } from "@/app/chat/_components/profile-summary-panel";
 import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
-import {
-  type PatientProfileSummary
-} from "@/lib/showcase/profile-summary";
+import type { PatientProfileSummary } from "@/lib/showcase/profile-summary";
 import { getChatGateState } from "@/lib/showcase/chat-gating";
 import {
   classifyProfileLoadFailure,
@@ -19,7 +19,7 @@ import {
   type ChatTranscriptTurn
 } from "@/lib/showcase/chat-transcript";
 
-const CHAT_SESSION_PROFILE_KEY = "chat.selectedProfileId";
+const CHAT_SESSION_PROFILE_KEY = "profile.selectedProfileId";
 const CHAT_TRANSCRIPT_KEY = "chat.transcript.v1";
 
 type StoredTranscript = {
@@ -42,11 +42,34 @@ type ChatApiResponse = {
     turn?: {
       assistantMessage?: string;
     };
+    safety?: {
+      emergencyEscalation?: {
+        emergencyContacts?: EmergencyContact[];
+      };
+    };
+    appointmentBookingAction?: AppointmentBookingAction;
   };
   error?: {
     code?: string;
     message?: string;
   };
+};
+
+type EmergencyContact = {
+  label: string;
+  number: string;
+  description: string;
+};
+
+type ChatAssistantResponse = {
+  assistantMessage: string;
+  emergencyContacts: EmergencyContact[];
+  appointmentBookingAction: AppointmentBookingAction | null;
+};
+
+type AppointmentBookingAction = {
+  label: string;
+  href: string;
 };
 
 type ApiRequestError = Error & {
@@ -98,7 +121,7 @@ async function createChatSessionForProfile(profileId: string): Promise<string> {
 async function requestChatAssistantMessage(
   activeConversationId: string,
   message: string
-): Promise<string> {
+): Promise<ChatAssistantResponse> {
   const res = await fetch("/api/chat", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -120,7 +143,12 @@ async function requestChatAssistantMessage(
     );
   }
 
-  return data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.";
+  return {
+    assistantMessage:
+      data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.",
+    emergencyContacts: data.data?.safety?.emergencyEscalation?.emergencyContacts ?? [],
+    appointmentBookingAction: data.data?.appointmentBookingAction ?? null
+  };
 }
 
 function parseStoredTranscript(serialized: string | null): StoredTranscript | null {
@@ -152,6 +180,8 @@ function parseStoredTranscript(serialized: string | null): StoredTranscript | nu
 
 export default function ChatPage() {
   const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
+  const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(false);
+  const [optionsLoadError, setOptionsLoadError] = useState<string | null>(null);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [summary, setSummary] = useState<PatientProfileSummary | null>(null);
@@ -160,6 +190,8 @@ export default function ChatPage() {
   const [reloadCounter, setReloadCounter] = useState<number>(0);
   const [draftMessage, setDraftMessage] = useState<string>("");
   const [transcriptTurns, setTranscriptTurns] = useState<ChatTranscriptTurn[]>([]);
+  const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
+  const [appointmentBookingAction, setAppointmentBookingAction] = useState<AppointmentBookingAction | null>(null);
   const [nextTurnSequence, setNextTurnSequence] = useState<number>(0);
   const [isAwaitingResponse, setIsAwaitingResponse] = useState<boolean>(false);
 
@@ -186,11 +218,16 @@ export default function ChatPage() {
     let isCancelled = false;
 
     async function loadPatientOptions() {
+      setIsOptionsLoading(true);
+
       try {
         const response = await fetch("/api/patient-profile/options", { cache: "no-store" });
         const body = await response.json();
 
         if (!response.ok || !body?.data?.options || !Array.isArray(body.data.options)) {
+          if (!isCancelled) {
+            setPatientOptions([]);
+          }
           return;
         }
 
@@ -199,12 +236,33 @@ export default function ChatPage() {
         }
 
         const options = body.data.options as ShowcasePatientOption[];
-        if (options.length > 0) {
-          setPatientOptions(options);
+        setPatientOptions(options);
+
+        const knownProfileIds = new Set(options.map((option) => option.profileId));
+        const storedProfileId = sessionStorage.getItem(CHAT_SESSION_PROFILE_KEY);
+        if (storedProfileId && knownProfileIds.has(storedProfileId)) {
+          setConfirmedProfileId(storedProfileId);
+        } else if (storedProfileId) {
+          sessionStorage.removeItem(CHAT_SESSION_PROFILE_KEY);
+          setConfirmedProfileId(null);
+          setConversationId(null);
+        }
+
+        const storedTranscript = parseStoredTranscript(sessionStorage.getItem(CHAT_TRANSCRIPT_KEY));
+        if (!storedTranscript || !knownProfileIds.has(storedTranscript.profileId)) {
+          sessionStorage.removeItem(CHAT_TRANSCRIPT_KEY);
+          setTranscriptTurns([]);
+          setNextTurnSequence(0);
         }
       } catch {
         if (!isCancelled) {
           setPatientOptions([]);
+          setConfirmedProfileId(null);
+          setConversationId(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsOptionsLoading(false);
         }
       }
     }
@@ -253,40 +311,29 @@ export default function ChatPage() {
     setConfirmedProfileId(profileId);
     sessionStorage.setItem(CHAT_SESSION_PROFILE_KEY, profileId);
 
-    void createChatSessionForProfile(profileId)
-      .then((nextConversationId) => {
-        setConversationId(nextConversationId);
+    // Start a new chat session
+    fetch("/api/chat/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selectedPatientId: profileId
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error?.message || "Failed to start session");
+        }
+        return data;
+      })
+      .then((data) => {
+        setConversationId(data.data.conversationId);
       })
       .catch((error) => {
         console.error("Session error:", error);
         setConversationId(null);
       });
   }
-
-  useEffect(() => {
-    if (!confirmedProfileId || conversationId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void createChatSessionForProfile(confirmedProfileId)
-      .then((nextConversationId) => {
-        if (!cancelled) {
-          setConversationId(nextConversationId);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Session bootstrap error:", error);
-          setConversationId(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmedProfileId, conversationId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -412,18 +459,20 @@ export default function ChatPage() {
     // Optimistically add user turn immediately
     setTranscriptTurns((current) => sortTranscriptTurnsStable([...current, userTurn]));
 
-    const appendAssistantTurn = (assistantMessage: string): void => {
-        const assistantTurn: ChatTranscriptTurn = {
-          id: `turn-${(nextTurnSequence + 1).toString()}`,
-          sequence: nextTurnSequence + 1,
-          role: "assistant",
-          message: assistantMessage,
-          createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
-        };
+    const appendAssistantTurn = (result: ChatAssistantResponse): void => {
+      const assistantTurn: ChatTranscriptTurn = {
+        id: `turn-${(nextTurnSequence + 1).toString()}`,
+        sequence: nextTurnSequence + 1,
+        role: "assistant",
+        message: result.assistantMessage,
+        createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
+      };
 
       setTranscriptTurns((current) =>
         sortTranscriptTurnsStable([...current, assistantTurn])
       );
+      setEmergencyContacts(result.emergencyContacts);
+      setAppointmentBookingAction(result.appointmentBookingAction);
       setNextTurnSequence((current) => current + 2);
     };
 
@@ -432,6 +481,7 @@ export default function ChatPage() {
       const renderedMessage = requestError?.message || "Failed to get response";
 
       console.error("Chat error:", requestError);
+      toast.error(renderedMessage);
       const errorTurn: ChatTranscriptTurn = {
         id: `turn-${(nextTurnSequence + 1).toString()}`,
         sequence: nextTurnSequence + 1,
@@ -448,8 +498,9 @@ export default function ChatPage() {
 
     const submit = async (): Promise<void> => {
       try {
-        const assistantMessage = await requestChatAssistantMessage(conversationId, nextMessage);
-        appendAssistantTurn(assistantMessage);
+        const result = await requestChatAssistantMessage(conversationId, nextMessage);
+        appendAssistantTurn(result);
+        toast.success("Response received.");
         return;
       } catch (error) {
         const requestError = error as ApiRequestError;
@@ -462,8 +513,8 @@ export default function ChatPage() {
             console.warn("Session not found, recreating...", { code: requestError.code, status: requestError.status });
             const nextConversationId = await createChatSessionForProfile(confirmedProfileId);
             setConversationId(nextConversationId);
-            const assistantMessage = await requestChatAssistantMessage(nextConversationId, nextMessage);
-            appendAssistantTurn(assistantMessage);
+            const result = await requestChatAssistantMessage(nextConversationId, nextMessage);
+            appendAssistantTurn(result);
             return;
           } catch (retryError) {
             console.error("Session recovery failed:", retryError);
@@ -484,10 +535,15 @@ export default function ChatPage() {
   const isSendDisabled = !chatGateState.isChatEnabled || draftMessage.trim().length === 0 || isAwaitingResponse || !conversationId;
 
   return (
-    <main>
-      <h1>Patient Chat</h1>
+    <main className="workspace-page chat-page">
+      <header className="page-intro">
+        <div>
+          <p className="eyebrow">Care conversation</p>
+          <h1>Patient Chat</h1>
+        </div>
+      </header>
       <p className="chat-subtitle">
-        Select a showcase profile before starting chat. Profile selection does not send a chat request.
+        Select a patient to load the active clinical context before sending a message.
       </p>
 
       <PatientSelector
@@ -495,6 +551,8 @@ export default function ChatPage() {
         confirmedProfileId={confirmedProfileId}
         onConfirmSelection={handleConfirmSelection}
       />
+
+      {optionsLoadError && <p className="page-error" role="alert">{optionsLoadError}</p>}
 
       <section className="chat-workspace">
         <ProfileSummaryPanel
@@ -506,11 +564,16 @@ export default function ChatPage() {
         />
 
         <section className="chat-shell" aria-live="polite">
-          <h2>Chat Shell</h2>
+          <div className="panel-heading">
+            <span className="panel-icon" aria-hidden="true"><MessageCircle size={18} /></span>
+            <h2>Conversation</h2>
+          </div>
           <p>
             {selectedProfile
               ? `Ready to start conversation with ${selectedProfile.label}.`
-              : "Confirm a profile to enable the chat workflow in the next task."}
+              : isOptionsLoading
+                ? "Loading Synthea profiles for chat."
+                : "Confirm a profile to enable the chat workflow in the next task."}
           </p>
 
           <p className="chat-gate-message" role="status" aria-live="polite">
@@ -532,6 +595,7 @@ export default function ChatPage() {
             />
             <div className="chat-actions">
               <button type="submit" disabled={isSendDisabled}>
+                <Send size={16} aria-hidden="true" />
                 Send
               </button>
             </div>
@@ -563,6 +627,37 @@ export default function ChatPage() {
               </ol>
             )}
           </section>
+
+          {emergencyContacts.length > 0 && (
+            <section className="emergency-contact-card" aria-labelledby="emergency-contact-heading">
+              <h3 id="emergency-contact-heading">Emergency Contacts</h3>
+              <p>Call emergency services now if you may be having a medical emergency.</p>
+              <div className="emergency-contact-actions">
+                {emergencyContacts.map((contact) => (
+                  <a key={contact.number} href={`tel:${contact.number}`} className="emergency-contact-link">
+                    <span>{contact.label}</span>
+                    <strong>{contact.number}</strong>
+                    <small>{contact.description}</small>
+                  </a>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {appointmentBookingAction && (
+            <section className="appointment-booking-card" aria-labelledby="appointment-booking-heading">
+              <h3 id="appointment-booking-heading">Ready to Book an Appointment?</h3>
+              <p>Continue to the appointment booking system.</p>
+              <a
+                href={appointmentBookingAction.href}
+                className="appointment-booking-link"
+                target="_blank"
+                rel="noreferrer"
+              >
+                {appointmentBookingAction.label}
+              </a>
+            </section>
+          )}
 
           <p className="chat-shell-note">The profile summary panel remains visible while chat is active.</p>
         </section>

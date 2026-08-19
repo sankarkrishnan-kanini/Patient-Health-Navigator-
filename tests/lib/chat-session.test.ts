@@ -75,7 +75,7 @@ describe("chat session start", () => {
   it("rejects invalid selected patient ids", () => {
     expect(() => startConversationSession({ selectedPatientId: "patient-999" })).toThrow(AppError);
     expect(() => startConversationSession({ selectedPatientId: "patient-999" })).toThrow(
-      "not available in the showcase dataset"
+      "not available in the Synthea dataset"
     );
   });
 

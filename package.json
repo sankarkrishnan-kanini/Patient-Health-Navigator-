@@ -22,11 +22,14 @@
   },
   "dependencies": {
     "dotenv": "^17.4.2",
+    "lucide-react": "^1.31.0",
     "mysql2": "^3.23.2",
     "next": "^15.0.0",
     "openai": "^7.4.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-toastify": "^11.1.0",
+    "redis": "^6.2.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",

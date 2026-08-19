@@ -16,11 +16,18 @@ export type CarePlanAppointmentGuidanceResult = {
 const APPOINTMENT_INTENT_PATTERN =
   /\b(appointment|appointments|visit|visits|schedule|scheduled|next visit|next appointment|when is)\b/i;
 
+const APPOINTMENT_BOOKING_PATTERN =
+  /\b(book|schedule|make|request)\b(?:\s+\w+){0,4}\s+\b(appointment|visit)\b|\b(appointment|visit)\b(?:\s+\w+){0,4}\b(book|schedule)\b/i;
+
 const CARE_PLAN_INTENT_PATTERN =
   /\b(care plan|careplan|care task|care tasks|care activity|my plan|task list|care follow up|care follow-up)\b/i;
 
 function hasAppointmentIntent(message: string): boolean {
   return APPOINTMENT_INTENT_PATTERN.test(message);
+}
+
+export function isAppointmentBookingRequest(message: string): boolean {
+  return APPOINTMENT_BOOKING_PATTERN.test(message);
 }
 
 function hasCarePlanIntent(message: string): boolean {

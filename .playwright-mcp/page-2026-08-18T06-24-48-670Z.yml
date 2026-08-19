@@ -1,0 +1,29 @@
+- generic [active] [ref=f5e1]:
+  - generic [ref=f5e2]:
+    - banner [ref=f5e3]:
+      - link "Patient AI Health Navigator home" [ref=f5e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f5e9]:
+          - strong [ref=f5e10]: Care Navigator
+          - generic [ref=f5e11]: Clinical workspace
+      - navigation "Primary navigation" [ref=f5e12]:
+        - link "Profiles" [ref=f5e13] [cursor=pointer]:
+          - /url: /profile
+        - link "Conversations" [ref=f5e17] [cursor=pointer]:
+          - /url: /chat
+    - main [ref=f5e20]:
+      - generic [ref=f5e21]:
+        - generic [ref=f5e23]:
+          - paragraph [ref=f5e24]: Patient context
+          - heading "Patient profile browser" [level=1] [ref=f5e25]
+          - paragraph [ref=f5e26]: Select a synthetic patient to review conditions, medications, appointments, and care plans.
+        - generic [ref=f5e27]:
+          - region [ref=f5e29]:
+            - group "Select patient profile" [ref=f5e30]:
+              - paragraph [ref=f5e36]: Choose a profile for this chat session, then confirm before starting your first message.
+              - radiogroup "Showcase patient profiles"
+              - generic [ref=f5e37]:
+                - button "Confirm Selection" [disabled] [ref=f5e38]
+                - paragraph [ref=f5e41]: No profile confirmed yet.
+          - paragraph [ref=f5e47]: Select a patient profile to view the active clinical summary.
+  - region "Notifications Alt+T"

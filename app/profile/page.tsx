@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { ArrowRight, ClipboardList, UserRound } from "lucide-react";
+import { toast } from "react-toastify";
 import { PatientSelector } from "@/app/chat/_components/patient-selector";
 import { ProfileSummaryPanel } from "@/app/chat/_components/profile-summary-panel";
 import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
@@ -15,6 +17,7 @@ const PROFILE_SESSION_KEY = "profile.selectedProfileId";
 
 export default function ProfilePage() {
   const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
+  const [optionsLoadError, setOptionsLoadError] = useState<string | null>(null);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [summary, setSummary] = useState<PatientProfileSummary | null>(null);
   const [isSummaryLoading, setIsSummaryLoading] = useState<boolean>(false);
@@ -39,6 +42,9 @@ export default function ProfilePage() {
         const body = await response.json();
 
         if (!response.ok || !body?.data?.options || !Array.isArray(body.data.options)) {
+          if (!isCancelled) {
+            setOptionsLoadError(body?.error?.message ?? "Patient profiles could not be loaded.");
+          }
           return;
         }
 
@@ -47,12 +53,12 @@ export default function ProfilePage() {
         }
 
         const options = body.data.options as ShowcasePatientOption[];
-        if (options.length > 0) {
-          setPatientOptions(options);
-        }
+        setPatientOptions(options);
+        setOptionsLoadError(options.length === 0 ? "No patient profiles are available yet." : null);
       } catch {
         if (!isCancelled) {
           setPatientOptions([]);
+          setOptionsLoadError("Patient profiles could not be loaded. Check the service connection and retry.");
         }
       }
     }
@@ -125,6 +131,7 @@ export default function ProfilePage() {
   function handleConfirmSelection(profileId: string): void {
     setConfirmedProfileId(profileId);
     sessionStorage.setItem(PROFILE_SESSION_KEY, profileId);
+    toast.success("Patient context loaded.");
   }
 
   function handleRetryProfileLoad(): void {
@@ -143,13 +150,17 @@ export default function ProfilePage() {
   }, [confirmedProfileId, patientOptions]);
 
   return (
-    <main className="profile-page-main">
+    <main className="workspace-page profile-page-main">
       <div className="profile-page-container">
-        <h1>Patient Profile Browser</h1>
-        <p>
-          Browse and review synthetic patient profiles. Select a patient to view their complete
-          profile including conditions, medications, appointments, and care plan details.
-        </p>
+        <header className="page-intro">
+          <div>
+            <p className="eyebrow">Patient context</p>
+            <h1>Patient profile browser</h1>
+            <p>
+              Select a synthetic patient to review conditions, medications, appointments, and care plans.
+            </p>
+          </div>
+        </header>
 
         <div className="profile-page-layout">
           <div className="profile-selector-section">
@@ -159,10 +170,14 @@ export default function ProfilePage() {
               onConfirmSelection={handleConfirmSelection}
             />
 
+            {optionsLoadError && <p className="page-error" role="alert">{optionsLoadError}</p>}
+
             {selectedProfile && (
               <div className="profile-action-buttons">
                 <Link href="/chat" className="button button-primary">
+                  <UserRound size={17} aria-hidden="true" />
                   Start Chat with {selectedProfile.label}
+                  <ArrowRight size={17} aria-hidden="true" />
                 </Link>
               </div>
             )}
@@ -179,7 +194,8 @@ export default function ProfilePage() {
               />
             ) : (
               <div className="profile-empty-state">
-                <p>Select a patient profile to view their summary</p>
+                <ClipboardList size={28} aria-hidden="true" />
+                <p>Select a patient profile to view the active clinical summary.</p>
               </div>
             )}
           </div>

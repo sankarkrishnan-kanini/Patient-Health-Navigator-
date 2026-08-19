@@ -486,6 +486,18 @@ describe("POST /api/chat request context propagation", () => {
         "Go to the nearest emergency department immediately."
       ],
       safetyBoundary: "I cannot safely triage emergency symptoms in chat.",
+      emergencyContacts: [
+        {
+          label: "National Emergency",
+          number: "112",
+          description: "National emergency response"
+        },
+        {
+          label: "Ambulance Service",
+          number: "108",
+          description: "Emergency ambulance service"
+        }
+      ],
       minimizationValidation: {
         ruleSetVersion: "emergency-minimization.v1",
         violationDetected: false,
@@ -524,6 +536,37 @@ describe("POST /api/chat request context propagation", () => {
 
     expect(response.status).toBe(200);
     expect(modelInvocationSpy).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns the local appointment booking action for explicit booking requests", async () => {
+    const started = await POST_SESSION(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat/session",
+        "POST",
+        { selectedPatientId: "patient-401" },
+        "cid-start"
+      )
+    );
+    const startedBody = await started.json();
+
+    const response = await POST_CHAT(
+      buildJsonRequest(
+        "http://localhost:3030/api/chat",
+        "POST",
+        {
+          conversationId: startedBody.data.conversationId,
+          message: "I need to book an appointment"
+        },
+        "cid-chat"
+      )
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.appointmentBookingAction).toEqual({
+      label: "Book an Appointment",
+      href: "http://localhost:3000"
+    });
   });
 
   it("post-generation guard overrides diagnosis-violating model draft", async () => {
