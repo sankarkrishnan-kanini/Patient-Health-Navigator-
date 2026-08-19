@@ -37,7 +37,7 @@ export const DEFAULT_DIAGNOSIS_RULE_SET: DiagnosisIntentRuleSet = {
     {
       ruleId: "DX-RULE-002",
       signal: "self_diagnosis_question",
-      phrases: ["do i have", "what do i have", "am i sick", "is this", "could this be"]
+      phrases: ["do i have", "what do i have", "am i sick", "could this be"]
     },
     {
       ruleId: "DX-RULE-003",
@@ -57,7 +57,16 @@ export const DEFAULT_DIAGNOSIS_RULE_SET: DiagnosisIntentRuleSet = {
     "care tasks",
     "medication",
     "medications",
-    "meds"
+    "meds",
+    "what is",
+    "what does",
+    "tell me about",
+    "describe",
+    "explain",
+    "define",
+    "what drug",
+    "which medication",
+    "how does"
   ]
 };
 

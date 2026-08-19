@@ -25,6 +25,102 @@ type StoredTranscript = {
   turns: ChatTranscriptTurn[];
 };
 
+type SessionStartApiResponse = {
+  data?: {
+    conversationId?: string;
+  };
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+type ChatApiResponse = {
+  data?: {
+    turn?: {
+      assistantMessage?: string;
+    };
+  };
+  error?: {
+    code?: string;
+    message?: string;
+  };
+};
+
+type ApiRequestError = Error & {
+  code?: string;
+  status?: number;
+};
+
+function toApiRequestError(
+  fallbackMessage: string,
+  payload: { code?: string; message?: string },
+  status: number
+): ApiRequestError {
+  const error = new Error(payload.message || fallbackMessage);
+  const apiError = error as ApiRequestError;
+  apiError.code = payload.code;
+  apiError.status = status;
+  return apiError;
+}
+
+async function createChatSessionForProfile(profileId: string): Promise<string> {
+  const res = await fetch("/api/chat/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      selectedPatientId: profileId
+    })
+  });
+
+  const data = (await res.json()) as SessionStartApiResponse;
+  if (!res.ok) {
+    throw toApiRequestError(
+      "Failed to start session",
+      {
+        code: data.error?.code,
+        message: data.error?.message
+      },
+      res.status
+    );
+  }
+
+  const nextConversationId = data.data?.conversationId;
+  if (!nextConversationId) {
+    throw new Error("Session started without a conversation id.");
+  }
+
+  return nextConversationId;
+}
+
+async function requestChatAssistantMessage(
+  activeConversationId: string,
+  message: string
+): Promise<string> {
+  const res = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      conversationId: activeConversationId,
+      message
+    })
+  });
+
+  const data = (await res.json()) as ChatApiResponse;
+  if (!res.ok) {
+    throw toApiRequestError(
+      "Failed to get response",
+      {
+        code: data.error?.code,
+        message: data.error?.message
+      },
+      res.status
+    );
+  }
+
+  return data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.";
+}
+
 function parseStoredTranscript(serialized: string | null): StoredTranscript | null {
   if (!serialized) {
     return null;
@@ -330,55 +426,73 @@ export default function ChatPage() {
     // Optimistically add user turn immediately
     setTranscriptTurns((current) => sortTranscriptTurnsStable([...current, userTurn]));
 
-    // Call API to get AI response
-    fetch("/api/chat", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        conversationId: conversationId,
-        message: nextMessage
-      })
-    })
-      .then(async (res) => {
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.error?.message || "Failed to get response");
+    const appendAssistantTurn = (assistantMessage: string): void => {
+      const assistantTurn: ChatTranscriptTurn = {
+        id: `turn-${(nextTurnSequence + 1).toString()}`,
+        sequence: nextTurnSequence + 1,
+        role: "assistant",
+        message: assistantMessage,
+        createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
+      };
+
+      setTranscriptTurns((current) =>
+        sortTranscriptTurnsStable([...current, assistantTurn])
+      );
+      setNextTurnSequence((current) => current + 2);
+    };
+
+    const appendErrorTurn = (error: unknown): void => {
+      const requestError = error as ApiRequestError;
+      const renderedMessage = requestError?.message || "Failed to get response";
+
+      console.error("Chat error:", requestError);
+      const errorTurn: ChatTranscriptTurn = {
+        id: `turn-${(nextTurnSequence + 1).toString()}`,
+        sequence: nextTurnSequence + 1,
+        role: "assistant",
+        message: `Error: ${renderedMessage}`,
+        createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
+      };
+
+      setTranscriptTurns((current) =>
+        sortTranscriptTurnsStable([...current, errorTurn])
+      );
+      setNextTurnSequence((current) => current + 2);
+    };
+
+    const submit = async (): Promise<void> => {
+      try {
+        const assistantMessage = await requestChatAssistantMessage(conversationId, nextMessage);
+        appendAssistantTurn(assistantMessage);
+        return;
+      } catch (error) {
+        const requestError = error as ApiRequestError;
+        const shouldRecoverSession =
+          (requestError.code === "SESSION_NOT_FOUND" || requestError.status === 404) &&
+          typeof confirmedProfileId === "string";
+
+        if (shouldRecoverSession) {
+          try {
+            console.warn("Session not found, recreating...", { code: requestError.code, status: requestError.status });
+            const nextConversationId = await createChatSessionForProfile(confirmedProfileId);
+            setConversationId(nextConversationId);
+            const assistantMessage = await requestChatAssistantMessage(nextConversationId, nextMessage);
+            appendAssistantTurn(assistantMessage);
+            return;
+          } catch (retryError) {
+            console.error("Session recovery failed:", retryError);
+            appendErrorTurn(retryError);
+            return;
+          }
         }
-        return data;
-      })
-      .then((data) => {
-        const assistantMessage = data.data?.turn?.assistantMessage || "I couldn't generate a response. Please try again.";
-        const assistantTurn: ChatTranscriptTurn = {
-          id: `turn-${(nextTurnSequence + 1).toString()}`,
-          sequence: nextTurnSequence + 1,
-          role: "assistant",
-          message: assistantMessage,
-          createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
-        };
 
-        setTranscriptTurns((current) =>
-          sortTranscriptTurnsStable([...current, assistantTurn])
-        );
-        setNextTurnSequence((current) => current + 2);
-      })
-      .catch((error) => {
-        console.error("Chat error:", error);
-        const errorTurn: ChatTranscriptTurn = {
-          id: `turn-${(nextTurnSequence + 1).toString()}`,
-          sequence: nextTurnSequence + 1,
-          role: "assistant",
-          message: `Error: ${error.message}`,
-          createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
-        };
-
-        setTranscriptTurns((current) =>
-          sortTranscriptTurnsStable([...current, errorTurn])
-        );
-        setNextTurnSequence((current) => current + 2);
-      })
-      .finally(() => {
+        appendErrorTurn(requestError);
+      } finally {
         setIsAwaitingResponse(false);
-      });
+      }
+    };
+
+    void submit();
   }
 
   const isSendDisabled = !chatGateState.isChatEnabled || draftMessage.trim().length === 0 || isAwaitingResponse || !conversationId;

@@ -99,9 +99,14 @@ function buildProfileMarkers(profile: PatientProfileSummary): ProfileMarkers {
   };
 }
 
+function formatConditionSources(medicalContext: ConditionKnowledge): string {
+  const sourceNames = medicalContext.sources?.map((source) => source.sourceName) ?? [];
+  return sourceNames.length > 0 ? sourceNames.join(", ") : "Your care team";
+}
+
 function buildConditionExplanation(condition: ProfileCondition, medicalContext: ConditionKnowledge | null): string {
   if (medicalContext) {
-    return `**${condition.label}**\n- What it means: ${medicalContext.whatItMeans}\n- Why it matters: ${medicalContext.why_it_matters}\n- Source: ${medicalContext.source}`;
+    return `**${condition.label}**\n- What it means: ${medicalContext.whatItMeans}\n- Why it matters: ${medicalContext.why_it_matters}\n- Source: ${formatConditionSources(medicalContext)}`;
   }
   
   return `${condition.label}: your active profile shows this as an ongoing health condition that your care team is monitoring over time.`;
@@ -166,7 +171,7 @@ function buildSpecificConditionMessage(
     }
 
     parts.push(``);
-    parts.push(`*Information source: ${medicalContext.source || "Your care team"}*`);
+    parts.push(`*Information source: ${formatConditionSources(medicalContext)}*`);
     parts.push(`*Ask your care team any specific questions about your care.*`);
 
     return parts.join("\n");
