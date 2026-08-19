@@ -2,7 +2,6 @@ import { randomBytes } from "node:crypto";
 import { readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { AppError } from "@/lib/errors";
-import { persistChatSessionSafely, persistChatTurnSafely } from "@/lib/mysql-persistence";
 
 export const CONVERSATION_ID_FORMAT = "conv_<YYYYMMDDTHHMMSSZ>_<12hex>";
 export const CONVERSATION_ID_REGEX = /^conv_\d{8}T\d{6}Z_[a-f0-9]{12}$/;
@@ -209,7 +208,6 @@ function persistSession(
   };
 
   sessionStore.set(conversationId, metadata);
-  persistChatSessionSafely(metadata);
   return metadata;
 }
 
@@ -270,7 +268,6 @@ export function updateConversationSessionBinding(
   };
 
   sessionStore.set(normalizedConversationId, updated);
-  persistChatSessionSafely(updated);
   return updated;
 }
 
@@ -297,7 +294,6 @@ export function appendConversationTurn(input: SessionTurnAppendInput): number {
     confidence: input.memoryContext?.confidence ?? "high"
   });
   turnMemoryStore.set(normalizedConversationId, turns);
-  persistChatTurnSafely(normalizedConversationId, turns.length, turns[turns.length - 1]);
   return turns.length;
 }
 
@@ -331,7 +327,6 @@ export function resetConversationSession(conversationId: string): SessionResetRe
   };
 
   sessionStore.set(normalizedConversationId, updatedSession);
-  persistChatSessionSafely(updatedSession);
 
   return {
     conversationId: normalizedConversationId,

@@ -4,9 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { PatientSelector } from "@/app/chat/_components/patient-selector";
 import { ProfileSummaryPanel } from "@/app/chat/_components/profile-summary-panel";
 import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
-import {
-  type PatientProfileSummary
-} from "@/lib/showcase/profile-summary";
+import type { PatientProfileSummary } from "@/lib/showcase/profile-summary";
 import { getChatGateState } from "@/lib/showcase/chat-gating";
 import {
   classifyProfileLoadFailure,
@@ -152,6 +150,7 @@ function parseStoredTranscript(serialized: string | null): StoredTranscript | nu
 
 export default function ChatPage() {
   const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
+  const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(true);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [summary, setSummary] = useState<PatientProfileSummary | null>(null);
@@ -186,11 +185,16 @@ export default function ChatPage() {
     let isCancelled = false;
 
     async function loadPatientOptions() {
+      setIsOptionsLoading(true);
+
       try {
         const response = await fetch("/api/patient-profile/options", { cache: "no-store" });
         const body = await response.json();
 
         if (!response.ok || !body?.data?.options || !Array.isArray(body.data.options)) {
+          if (!isCancelled) {
+            setPatientOptions([]);
+          }
           return;
         }
 
@@ -199,12 +203,33 @@ export default function ChatPage() {
         }
 
         const options = body.data.options as ShowcasePatientOption[];
-        if (options.length > 0) {
-          setPatientOptions(options);
+        setPatientOptions(options);
+
+        const knownProfileIds = new Set(options.map((option) => option.profileId));
+        const storedProfileId = sessionStorage.getItem(CHAT_SESSION_PROFILE_KEY);
+        if (storedProfileId && knownProfileIds.has(storedProfileId)) {
+          setConfirmedProfileId(storedProfileId);
+        } else if (storedProfileId) {
+          sessionStorage.removeItem(CHAT_SESSION_PROFILE_KEY);
+          setConfirmedProfileId(null);
+          setConversationId(null);
+        }
+
+        const storedTranscript = parseStoredTranscript(sessionStorage.getItem(CHAT_TRANSCRIPT_KEY));
+        if (!storedTranscript || !knownProfileIds.has(storedTranscript.profileId)) {
+          sessionStorage.removeItem(CHAT_TRANSCRIPT_KEY);
+          setTranscriptTurns([]);
+          setNextTurnSequence(0);
         }
       } catch {
         if (!isCancelled) {
           setPatientOptions([]);
+          setConfirmedProfileId(null);
+          setConversationId(null);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsOptionsLoading(false);
         }
       }
     }
@@ -253,40 +278,29 @@ export default function ChatPage() {
     setConfirmedProfileId(profileId);
     sessionStorage.setItem(CHAT_SESSION_PROFILE_KEY, profileId);
 
-    void createChatSessionForProfile(profileId)
-      .then((nextConversationId) => {
-        setConversationId(nextConversationId);
+    // Start a new chat session
+    fetch("/api/chat/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        selectedPatientId: profileId
+      })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error?.message || "Failed to start session");
+        }
+        return data;
+      })
+      .then((data) => {
+        setConversationId(data.data.conversationId);
       })
       .catch((error) => {
         console.error("Session error:", error);
         setConversationId(null);
       });
   }
-
-  useEffect(() => {
-    if (!confirmedProfileId || conversationId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    void createChatSessionForProfile(confirmedProfileId)
-      .then((nextConversationId) => {
-        if (!cancelled) {
-          setConversationId(nextConversationId);
-        }
-      })
-      .catch((error) => {
-        if (!cancelled) {
-          console.error("Session bootstrap error:", error);
-          setConversationId(null);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [confirmedProfileId, conversationId]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -413,13 +427,13 @@ export default function ChatPage() {
     setTranscriptTurns((current) => sortTranscriptTurnsStable([...current, userTurn]));
 
     const appendAssistantTurn = (assistantMessage: string): void => {
-        const assistantTurn: ChatTranscriptTurn = {
-          id: `turn-${(nextTurnSequence + 1).toString()}`,
-          sequence: nextTurnSequence + 1,
-          role: "assistant",
-          message: assistantMessage,
-          createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
-        };
+      const assistantTurn: ChatTranscriptTurn = {
+        id: `turn-${(nextTurnSequence + 1).toString()}`,
+        sequence: nextTurnSequence + 1,
+        role: "assistant",
+        message: assistantMessage,
+        createdAt: new Date(baseTimestamp.getTime() + 1000).toISOString()
+      };
 
       setTranscriptTurns((current) =>
         sortTranscriptTurnsStable([...current, assistantTurn])
@@ -510,7 +524,9 @@ export default function ChatPage() {
           <p>
             {selectedProfile
               ? `Ready to start conversation with ${selectedProfile.label}.`
-              : "Confirm a profile to enable the chat workflow in the next task."}
+              : isOptionsLoading
+                ? "Loading Synthea profiles for chat."
+                : "Confirm a profile to enable the chat workflow in the next task."}
           </p>
 
           <p className="chat-gate-message" role="status" aria-live="polite">

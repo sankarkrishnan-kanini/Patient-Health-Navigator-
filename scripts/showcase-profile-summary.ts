@@ -1,4 +1,5 @@
 import { exportShowcaseProfileSummaries } from "@/lib/data-ingestion/showcase-profile-summary";
+import { invalidatePatientProfileCaches } from "@/lib/cache";
 
 type CliArgs = {
   completenessRunId: string;
@@ -55,7 +56,18 @@ function parseArgs(argv: string[]): CliArgs {
 async function main() {
   const args = parseArgs(process.argv.slice(2));
   const summary = await exportShowcaseProfileSummaries(args);
-  console.log(JSON.stringify(summary, null, 2));
+  const invalidation = await invalidatePatientProfileCaches();
+
+  console.log(
+    JSON.stringify(
+      {
+        ...summary,
+        cacheInvalidation: invalidation
+      },
+      null,
+      2
+    )
+  );
 }
 
 main().catch((error) => {

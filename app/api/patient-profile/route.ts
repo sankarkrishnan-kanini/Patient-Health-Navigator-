@@ -8,6 +8,8 @@ import {
 import { AppError, handleRouteError } from "@/lib/errors";
 import { createLogger } from "@/lib/logger";
 
+export const dynamic = "force-dynamic";
+
 function routeLogger(request: NextRequest) {
   const correlationId = getCorrelationIdFromRequest(request);
   const log = createLogger({ source: "api.patient-profile", correlationId });
@@ -47,7 +49,6 @@ export async function GET(request: NextRequest) {
       careTaskCount: summary.careTasks.length,
       visitCount: summary.upcomingVisits.length
     });
-
     log.info("api.request.completed", {
       method: request.method,
       pathname: request.nextUrl.pathname,

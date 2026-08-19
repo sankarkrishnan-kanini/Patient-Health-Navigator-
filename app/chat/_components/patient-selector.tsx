@@ -20,11 +20,14 @@ export function PatientSelector({
 
   useEffect(() => {
     if (!confirmedProfileId) {
+      if (options.length > 0) {
+        setPendingProfileId((current) => (current.length > 0 ? current : options[0].profileId));
+      }
       return;
     }
 
     setPendingProfileId(confirmedProfileId);
-  }, [confirmedProfileId]);
+  }, [confirmedProfileId, options]);
 
   return (
     <section className="selector-shell" aria-labelledby={legendId}>
