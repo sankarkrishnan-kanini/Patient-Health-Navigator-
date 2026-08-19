@@ -372,6 +372,139 @@ main {
   margin-bottom: 0;
 }
 
+.emergency-contact-card {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 2px solid #b91c1c;
+  border-radius: 0.65rem;
+  background: #fff1f2;
+}
+
+.emergency-contact-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  color: #7f1d1d;
+}
+
+.emergency-contact-card p {
+  margin-top: 0;
+  color: #7f1d1d;
+}
+
+.emergency-contact-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem;
+}
+
+.emergency-contact-link {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.65rem;
+  border: 1px solid #b91c1c;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  color: #7f1d1d;
+  text-decoration: none;
+}
+
+.emergency-contact-link strong {
+  font-size: 1.25rem;
+}
+
+.emergency-contact-link small {
+  color: #991b1b;
+}
+
+.appointment-booking-card {
+  margin-top: 1rem;
+  padding: 0.85rem;
+  border: 1px solid #0f766e;
+  border-radius: 0.65rem;
+  background: #f0fdfa;
+}
+
+.appointment-booking-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.35rem;
+  color: #115e59;
+}
+
+.appointment-booking-card p {
+  margin-top: 0;
+  color: #134e4a;
+}
+
+.appointment-booking-link {
+  display: inline-block;
+  padding: 0.55rem 0.85rem;
+  border-radius: 0.5rem;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.appointment-page {
+  max-width: 640px;
+}
+
+.appointment-back-link {
+  color: #0f766e;
+  font-weight: 600;
+}
+
+.appointment-intro {
+  color: #475569;
+}
+
+.appointment-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid #ccfbf1;
+  border-radius: 0.65rem;
+  background: #f8fffe;
+}
+
+.appointment-form label {
+  font-weight: 600;
+}
+
+.appointment-form input,
+.appointment-form textarea {
+  width: 100%;
+  border: 1px solid #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.65rem;
+  font: inherit;
+}
+
+.appointment-form textarea {
+  resize: vertical;
+}
+
+.appointment-form button {
+  justify-self: start;
+  border: 1px solid #0f766e;
+  border-radius: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  background: #0f766e;
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.appointment-confirmation {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #86efac;
+  border-radius: 0.5rem;
+  background: #f0fdf4;
+  color: #166534;
+}
+
 /* Profile Page Styles */
 .profile-page-main {
   max-width: 1200px;
@@ -471,6 +604,10 @@ main {
   }
 
   .profile-page-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .emergency-contact-actions {
     grid-template-columns: 1fr;
   }
 
