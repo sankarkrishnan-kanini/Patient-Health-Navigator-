@@ -1,4 +1,5 @@
 import { normalizeFhirStagedRun } from "@/lib/data-ingestion/fhir-normalization";
+import { invalidatePatientProfileCaches } from "@/lib/cache";
 
 type CliArgs = {
   runId: string;
@@ -38,7 +39,18 @@ async function main() {
     profileVersion: args.profileVersion
   });
 
-  console.log(JSON.stringify(summary, null, 2));
+  const invalidation = await invalidatePatientProfileCaches();
+
+  console.log(
+    JSON.stringify(
+      {
+        ...summary,
+        cacheInvalidation: invalidation
+      },
+      null,
+      2
+    )
+  );
 }
 
 main().catch((error) => {

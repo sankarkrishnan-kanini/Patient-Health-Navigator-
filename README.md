@@ -88,6 +88,14 @@ Defined variables:
 - `LOG_LEVEL`: logging verbosity placeholder (defaults to `info`)
 - `OPENAI_API_KEY`: required for protected chat operations (request-time validation)
 - `MYSQL_URL`: required for protected patient profile operations (request-time validation)
+- `REDIS_URL`: optional Redis connection URL for shared API response caching (falls back to in-memory cache when omitted)
+- `PATIENT_OPTIONS_CACHE_TTL_SECONDS`: optional TTL for `GET /api/patient-profile/options` cache (default `120`)
+- `PROFILE_SUMMARY_CACHE_TTL_SECONDS`: optional TTL for `GET /api/patient-profile?profileId=...` cache (default `60`)
+- `CACHE_INVALIDATION_TOKEN`: bearer token required for manual cache clear endpoint `POST /api/cache/invalidate`
+
+Cache invalidation behavior:
+- Patient-profile caches are auto-invalidated after data-refresh scripts complete successfully.
+- Manual invalidation is available via `POST /api/cache/invalidate` with header `Authorization: Bearer <CACHE_INVALIDATION_TOKEN>`.
 
 Local profile guidance:
 - Set `APP_ENV=local` and provide only the integrations you are actively testing.

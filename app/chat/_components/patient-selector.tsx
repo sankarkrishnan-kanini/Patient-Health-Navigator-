@@ -31,6 +31,9 @@ export function PatientSelector({
 
   useEffect(() => {
     if (!confirmedProfileId) {
+      if (options.length > 0) {
+        setPendingProfileId((current) => (current.length > 0 ? current : options[0].profileId));
+      }
       return;
     }
 
