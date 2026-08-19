@@ -1,0 +1,38 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - link "Patient AI Health Navigator home" [ref=e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e9]:
+          - strong [ref=e10]: Care Navigator
+          - generic [ref=e11]: Clinical workspace
+      - navigation "Primary navigation" [ref=e12]:
+        - link "Profiles" [ref=e13] [cursor=pointer]:
+          - /url: /profile
+        - link "Conversations" [ref=e17] [cursor=pointer]:
+          - /url: /chat
+    - main [ref=e20]:
+      - region [ref=e21]:
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: Patient AI Health Navigator
+          - heading "Patient AI Health Navigator" [level=1] [ref=e24]
+          - paragraph [ref=e25]: A focused view of every patient conversation. Select a synthetic profile, review active clinical context, and continue a guardrail-aware conversation from one secure workspace.
+        - generic "Workspace status" [ref=e26]: Local workspace online
+      - region "Workspace actions" [ref=e28]:
+        - link "Profile Placeholder - Browse patient profiles" [ref=e29] [cursor=pointer]:
+          - /url: /profile
+          - generic [ref=e34]:
+            - generic [ref=e35]: Patient context
+            - strong [ref=e36]: Browse profiles
+            - generic [ref=e37]: Review conditions, medications, care tasks, and visits.
+        - link "Chat Placeholder - Open care conversations" [ref=e41] [cursor=pointer]:
+          - /url: /chat
+          - generic [ref=e45]:
+            - generic [ref=e46]: Care conversation
+            - strong [ref=e47]: Open chat
+            - generic [ref=e48]: Continue with profile-aware responses and session context.
+      - region "Safety controls" [ref=e52]:
+        - generic [ref=e56]:
+          - strong [ref=e57]: Built for responsible patient context
+          - paragraph [ref=e58]: Profile selection and safety controls remain visible throughout the workflow.
+  - region "Notifications Alt+T"

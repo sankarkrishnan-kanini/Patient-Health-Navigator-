@@ -1,0 +1,43 @@
+- generic [active] [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - banner [ref=f2e3]:
+      - link "Patient AI Health Navigator home" [ref=f2e4] [cursor=pointer]:
+        - /url: /
+        - generic [ref=f2e9]:
+          - strong [ref=f2e10]: Care Navigator
+          - generic [ref=f2e11]: Clinical workspace
+      - navigation "Primary navigation" [ref=f2e12]:
+        - link "Profiles" [ref=f2e13] [cursor=pointer]:
+          - /url: /profile
+        - link "Conversations" [ref=f2e17] [cursor=pointer]:
+          - /url: /chat
+    - main [ref=f2e20]:
+      - heading "Patient Chat" [level=1] [ref=f2e21]
+      - paragraph [ref=f2e22]: Select a showcase profile before starting chat. Profile selection does not send a chat request.
+      - region [ref=f2e23]:
+        - group "Select patient profile" [ref=f2e24]:
+          - paragraph [ref=f2e30]: Choose a profile for this chat session, then confirm before starting your first message.
+          - radiogroup "Showcase patient profiles"
+          - generic [ref=f2e31]:
+            - button "Confirm Selection" [disabled] [ref=f2e32]
+            - paragraph [ref=f2e35]: No profile confirmed yet.
+      - generic [ref=f2e36]:
+        - complementary [ref=f2e37]:
+          - heading "Profile Summary" [level=2] [ref=f2e38]
+          - paragraph [ref=f2e39]: Confirm a profile to view summary details.
+          - paragraph [ref=f2e41]: No summary available yet. Select a profile to load clinical context.
+        - generic [ref=f2e42]:
+          - heading "Chat Shell" [level=2] [ref=f2e43]
+          - paragraph [ref=f2e44]: Confirm a profile to enable the chat workflow in the next task.
+          - status [ref=f2e45]: Select and confirm a patient profile to enable chat.
+          - generic [ref=f2e46]:
+            - generic [ref=f2e47]: Message
+            - textbox "Message" [disabled] [ref=f2e48]:
+              - /placeholder: Type your message when chat is enabled
+            - button "Send" [disabled] [ref=f2e50]
+          - region [ref=f2e51]:
+            - heading "Conversation Transcript" [level=3] [ref=f2e52]
+            - paragraph [ref=f2e53]: Turns are grouped by speaker and include timestamps for readability.
+            - paragraph [ref=f2e54]: No transcript turns yet. Send a message to begin.
+          - paragraph [ref=f2e55]: The profile summary panel remains visible while chat is active.
+  - region "Notifications Alt+T"

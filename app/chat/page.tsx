@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { MessageCircle, Send } from "lucide-react";
+import { toast } from "react-toastify";
 import { PatientSelector } from "@/app/chat/_components/patient-selector";
 import { ProfileSummaryPanel } from "@/app/chat/_components/profile-summary-panel";
 import type { ShowcasePatientOption } from "@/lib/showcase/patient-options";
@@ -17,7 +19,7 @@ import {
   type ChatTranscriptTurn
 } from "@/lib/showcase/chat-transcript";
 
-const CHAT_SESSION_PROFILE_KEY = "chat.selectedProfileId";
+const CHAT_SESSION_PROFILE_KEY = "profile.selectedProfileId";
 const CHAT_TRANSCRIPT_KEY = "chat.transcript.v1";
 
 type StoredTranscript = {
@@ -150,7 +152,7 @@ function parseStoredTranscript(serialized: string | null): StoredTranscript | nu
 
 export default function ChatPage() {
   const [patientOptions, setPatientOptions] = useState<ShowcasePatientOption[]>([]);
-  const [isOptionsLoading, setIsOptionsLoading] = useState<boolean>(true);
+  const [optionsLoadError, setOptionsLoadError] = useState<string | null>(null);
   const [confirmedProfileId, setConfirmedProfileId] = useState<string | null>(null);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [summary, setSummary] = useState<PatientProfileSummary | null>(null);
@@ -446,6 +448,7 @@ export default function ChatPage() {
       const renderedMessage = requestError?.message || "Failed to get response";
 
       console.error("Chat error:", requestError);
+      toast.error(renderedMessage);
       const errorTurn: ChatTranscriptTurn = {
         id: `turn-${(nextTurnSequence + 1).toString()}`,
         sequence: nextTurnSequence + 1,
@@ -464,6 +467,7 @@ export default function ChatPage() {
       try {
         const assistantMessage = await requestChatAssistantMessage(conversationId, nextMessage);
         appendAssistantTurn(assistantMessage);
+        toast.success("Response received.");
         return;
       } catch (error) {
         const requestError = error as ApiRequestError;
@@ -498,10 +502,15 @@ export default function ChatPage() {
   const isSendDisabled = !chatGateState.isChatEnabled || draftMessage.trim().length === 0 || isAwaitingResponse || !conversationId;
 
   return (
-    <main>
-      <h1>Patient Chat</h1>
+    <main className="workspace-page chat-page">
+      <header className="page-intro">
+        <div>
+          <p className="eyebrow">Care conversation</p>
+          <h1>Patient Chat</h1>
+        </div>
+      </header>
       <p className="chat-subtitle">
-        Select a showcase profile before starting chat. Profile selection does not send a chat request.
+        Select a patient to load the active clinical context before sending a message.
       </p>
 
       <PatientSelector
@@ -509,6 +518,8 @@ export default function ChatPage() {
         confirmedProfileId={confirmedProfileId}
         onConfirmSelection={handleConfirmSelection}
       />
+
+      {optionsLoadError && <p className="page-error" role="alert">{optionsLoadError}</p>}
 
       <section className="chat-workspace">
         <ProfileSummaryPanel
@@ -520,7 +531,10 @@ export default function ChatPage() {
         />
 
         <section className="chat-shell" aria-live="polite">
-          <h2>Chat Shell</h2>
+          <div className="panel-heading">
+            <span className="panel-icon" aria-hidden="true"><MessageCircle size={18} /></span>
+            <h2>Conversation</h2>
+          </div>
           <p>
             {selectedProfile
               ? `Ready to start conversation with ${selectedProfile.label}.`
@@ -548,6 +562,7 @@ export default function ChatPage() {
             />
             <div className="chat-actions">
               <button type="submit" disabled={isSendDisabled}>
+                <Send size={16} aria-hidden="true" />
                 Send
               </button>
             </div>
