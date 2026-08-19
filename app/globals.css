@@ -474,3 +474,189 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+.analytics-page {
+  max-width: 1120px;
+  padding-top: 3rem;
+}
+
+.analytics-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.analytics-back-link {
+  color: #155e75;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.analytics-eyebrow {
+  margin: 1rem 0 0.25rem;
+  color: #0f766e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.analytics-header h1,
+.analytics-table-section h2 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+.analytics-intro {
+  max-width: 56ch;
+  color: #475569;
+}
+
+.analytics-source {
+  flex: 0 0 auto;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid #99f6e4;
+  background: #f0fdfa;
+  color: #115e59;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.analytics-kpis,
+.analytics-categories {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.analytics-kpi,
+.analytics-category,
+.analytics-table-section {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  border-radius: 0.4rem;
+}
+
+.analytics-kpi {
+  padding: 1rem;
+}
+
+.analytics-kpi span,
+.analytics-category p,
+.analytics-category span {
+  color: #475569;
+}
+
+.analytics-kpi strong {
+  display: block;
+  margin-top: 0.35rem;
+  color: #0f172a;
+  font-size: 2rem;
+}
+
+.analytics-kpi-flagged strong {
+  color: #b45309;
+}
+
+.analytics-categories {
+  margin-top: 0.9rem;
+}
+
+.analytics-category {
+  min-height: 190px;
+  padding: 1.15rem;
+  border-top-width: 5px;
+}
+
+.analytics-category p {
+  margin: 0;
+  font-weight: 700;
+}
+
+.analytics-category strong {
+  display: block;
+  margin: 1rem 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.analytics-category span {
+  display: block;
+  line-height: 1.45;
+}
+
+.analytics-category-critical {
+  border-top-color: #dc2626;
+}
+
+.analytics-category-critical strong {
+  color: #b91c1c;
+}
+
+.analytics-category-medication {
+  border-top-color: #d97706;
+}
+
+.analytics-category-medication strong {
+  color: #b45309;
+}
+
+.analytics-category-normal {
+  border-top-color: #0f766e;
+}
+
+.analytics-category-normal strong {
+  color: #0f766e;
+}
+
+.analytics-table-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+}
+
+.analytics-table-wrap {
+  overflow-x: auto;
+  margin-top: 1rem;
+}
+
+.analytics-table-wrap table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.analytics-table-wrap th,
+.analytics-table-wrap td {
+  padding: 0.8rem 0.55rem;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.analytics-table-wrap thead th {
+  color: #475569;
+  font-size: 0.85rem;
+}
+
+.analytics-loading,
+.analytics-error {
+  padding: 1rem;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+}
+
+.analytics-error {
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+@media (max-width: 700px) {
+  .analytics-header {
+    flex-direction: column;
+  }
+
+  .analytics-kpis,
+  .analytics-categories {
+    grid-template-columns: 1fr;
+  }
+}
