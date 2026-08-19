@@ -1,5 +1,6 @@
 import type { PatientProfileSummary } from "@/lib/showcase/profile-summary";
 import type { ProfileLoadFailure } from "@/lib/showcase/profile-load-failure";
+import { CalendarDays, ClipboardCheck, Pill, RotateCw, Stethoscope } from "lucide-react";
 
 type ProfileSummaryPanelProps = {
   profileLabel: string | null;
@@ -65,6 +66,7 @@ export function ProfileSummaryPanel({
           <p>{loadFailure.message}</p>
           <p>{loadFailure.retryGuidance}</p>
           <button type="button" className="summary-retry" onClick={onRetry}>
+            <RotateCw size={16} aria-hidden="true" />
             Retry Profile Load
           </button>
         </div>
@@ -79,7 +81,7 @@ export function ProfileSummaryPanel({
       {!isLoading && !loadFailure && summary && (
         <div className="summary-stack">
           <section className="summary-section">
-            <h3>Active Conditions</h3>
+            <h3><Stethoscope size={16} aria-hidden="true" /> Active Conditions</h3>
             {summary.activeConditions.length > 0 ? (
               <ul>
                 {summary.activeConditions.map((condition) => (
@@ -92,7 +94,7 @@ export function ProfileSummaryPanel({
           </section>
 
           <section className="summary-section">
-            <h3>Active Medications</h3>
+            <h3><Pill size={16} aria-hidden="true" /> Active Medications</h3>
             {summary.activeMedications.length > 0 ? (
               <ul>
                 {summary.activeMedications.map((medication) => (
@@ -105,7 +107,7 @@ export function ProfileSummaryPanel({
           </section>
 
           <section className="summary-section">
-            <h3>Care Tasks</h3>
+            <h3><ClipboardCheck size={16} aria-hidden="true" /> Care Tasks</h3>
             {summary.careTasks.length > 0 ? (
               <ul>
                 {summary.careTasks.map((task) => (
@@ -120,7 +122,7 @@ export function ProfileSummaryPanel({
           </section>
 
           <section className="summary-section">
-            <h3>Upcoming Visits</h3>
+            <h3><CalendarDays size={16} aria-hidden="true" /> Upcoming Visits</h3>
             {summary.upcomingVisits.length > 0 ? (
               <ul>
                 {summary.upcomingVisits.map((visit) => (
